@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: "retro/exe et dll/age3y.exe"
+      function_selector:
+        description: Optional function name or address for a focused REA dossier
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -140,6 +145,7 @@ jobs:
         env:
           TARGET_PATH: ${{ steps.target.outputs.path }}
           TARGET_RELATIVE_PATH: ${{ steps.target.outputs.relative_path }}
+          FUNCTION_SELECTOR: ${{ inputs.function_selector }}
         run: |
           set -euo pipefail
 
@@ -178,6 +184,28 @@ jobs:
             echo "The full JSON report and provider diagnostics are available in the `rea-analysis` workflow artifact."
             echo "This job analyzes a binary; it does not decompile the entire game into source or build a native Linux executable."
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -n "$FUNCTION_SELECTOR" ]]; then
+            if [[ "$FUNCTION_SELECTOR" == *
+      - name: Upload REA analysis report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-analysis
+          path: ${{ runner.temp }}/rea-analysis-results/
+          if-no-files-found: warn
+          retention-days: 14
+\n'* || "$FUNCTION_SELECTOR" == -* || "${#FUNCTION_SELECTOR}" -gt 200 ]]; then
+              echo "::error::Function selector must be a short function name or address, not an option."
+              exit 1
+            fi
+
+            rea function "$TARGET_PATH" "$FUNCTION_SELECTOR" --provider ghidra --json \
+              > "$REPORT_DIR/function.json" \
+              2> "$REPORT_DIR/function.stderr.log"
+            jq -e . "$REPORT_DIR/function.json" > /dev/null
+            echo "- **Function dossier:** `$FUNCTION_SELECTOR`" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload REA analysis report
         if: always()
