@@ -186,16 +186,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -n "$FUNCTION_SELECTOR" ]]; then
-            if [[ "$FUNCTION_SELECTOR" == *
-      - name: Upload REA analysis report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rea-analysis
-          path: ${{ runner.temp }}/rea-analysis-results/
-          if-no-files-found: warn
-          retention-days: 14
-\n'* || "$FUNCTION_SELECTOR" == -* || "${#FUNCTION_SELECTOR}" -gt 200 ]]; then
+            if [[ "$FUNCTION_SELECTOR" == -* || "${#FUNCTION_SELECTOR}" -gt 200 ]]; then
               echo "::error::Function selector must be a short function name or address, not an option."
               exit 1
             fi
@@ -206,7 +197,6 @@ jobs:
             jq -e . "$REPORT_DIR/function.json" > /dev/null
             echo "- **Function dossier:** `$FUNCTION_SELECTOR`" >> "$GITHUB_STEP_SUMMARY"
           fi
-
       - name: Upload REA analysis report
         if: always()
         uses: actions/upload-artifact@v4
