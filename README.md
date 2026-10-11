@@ -50,9 +50,9 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 1. Open **Actions → REA binary analysis → Run workflow**.
 2. Enter the repository-relative path of a tracked `.exe` or `.dll`. The default target is `retro/exe et dll/age3y.exe`.
 3. By default, the workflow reads the PE optional header and attempts a focused REA function dossier at the declared entry-point address. This is commonly runtime/CRT startup code; **it is not automatically the game's main or gameplay function**. Set `function_selector` to a function name or address to override the automatic selection.
-4. Download the `rea-analysis` artifact from the completed run. It contains the overview JSON, PE entry-point metadata, function-selection status, target SHA-256 metadata, provider diagnostics, and a function dossier when REA can resolve one. Artifacts are retained for 14 days.
+4. Download the `rea-analysis` artifact from the completed run. It contains the overview JSON, PE entry-point metadata, function-selection status, target SHA-256 metadata, provider diagnostics, the selected function dossier, and a `callees/manifest.json` plus up to four direct internal-callee dossiers. Artifacts are retained for 14 days.
 
-The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
+The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It attempts a bounded dossier for up to four direct internal callees after a source function has been resolved. These are investigation leads, not automatically verified game-logic functions. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
 
 ## Linux build and release plan
 
