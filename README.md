@@ -43,6 +43,17 @@ A useful investigation should answer one concrete question at a time, such as:
 
 For every substantial finding, record the input file/version, relevant function or address, evidence, interpretation, and remaining unknowns. Keep analysis artifacts reproducible and separate verified behavior from hypotheses.
 
+## Running REA analysis in GitHub Actions
+
+The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) runs REA and Ghidra on a GitHub-hosted Linux runner:
+
+1. Open **Actions → REA binary analysis → Run workflow**.
+2. Enter the repository-relative path of a tracked `.exe` or `.dll`. The default target is `retro/exe et dll/age3y.exe`.
+3. Optionally enter a function name or address (for example, a Ghidra/REA-recognized symbol or `0x...`) to produce a focused function dossier in addition to the binary overview.
+4. Download the `rea-analysis` artifact from the completed run. It contains JSON evidence, target SHA-256 metadata, provider diagnostics, and any optional function report. Artifacts are retained for 14 days.
+
+The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
+
 ## Linux build and release plan
 
 The intended release pipeline is:
