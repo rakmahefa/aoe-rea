@@ -32,7 +32,7 @@ jobs:
       GHIDRA_ARCHIVE: "ghidra_12.1.4_PUBLIC_20260921.zip"
       GHIDRA_URL: "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"
       GHIDRA_HEADLESS_MAXMEM: "4G"
-      REPORT_DIR: "${{ runner.temp }}/rea-analysis-results"
+      REPORT_DIR: "rea-analysis-results"
 
     steps:
       - name: Checkout repository
@@ -202,6 +202,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rea-analysis
-          path: ${{ runner.temp }}/rea-analysis-results/
+          path: rea-analysis-results/
           if-no-files-found: warn
           retention-days: 14
