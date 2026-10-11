@@ -1,0 +1,189 @@
+name: REA binary analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_path:
+        description: Tracked EXE or DLL path to analyze
+        required: true
+        type: string
+        default: "retro/exe et dll/age3y.exe"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rea-analysis-${{ github.ref }}-${{ inputs.target_path }}
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    name: Analyze selected binary with REA + Ghidra
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      REA_VERSION: "6.4.0"
+      GHIDRA_VERSION: "12.1.4"
+      GHIDRA_ARCHIVE: "ghidra_12.1.4_PUBLIC_20260921.zip"
+      GHIDRA_URL: "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"
+      GHIDRA_HEADLESS_MAXMEM: "4G"
+      REPORT_DIR: "${{ runner.temp }}/rea-analysis-results"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate selected target
+        id: target
+        shell: bash
+        env:
+          TARGET_PATH: ${{ inputs.target_path }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$TARGET_PATH" || "$TARGET_PATH" == /* || "$TARGET_PATH" == *$'\n'* ]]; then
+            echo "::error::Provide a tracked repository-relative EXE or DLL path."
+            exit 1
+          fi
+
+          case "$TARGET_PATH" in
+            "."|".."|../*|*/../*|*/..)
+              echo "::error::Parent-directory traversal is not allowed."
+              exit 1
+              ;;
+          esac
+
+          case "${TARGET_PATH,,}" in
+            *.exe|*.dll) ;;
+            *)
+              echo "::error::Only .exe and .dll targets are supported by this workflow."
+              exit 1
+              ;;
+          esac
+
+          git ls-files --error-unmatch -- "$TARGET_PATH" >/dev/null || {
+            echo "::error::Target is not a tracked file in this checkout: $TARGET_PATH"
+            exit 1
+          }
+
+          test -f "$TARGET_PATH" || {
+            echo "::error::Target file does not exist: $TARGET_PATH"
+            exit 1
+          }
+
+          resolved_path="$(realpath -- "$TARGET_PATH")"
+          case "$resolved_path" in
+            "$GITHUB_WORKSPACE"/*) ;;
+            *)
+              echo "::error::Resolved target is outside the repository workspace."
+              exit 1
+              ;;
+          esac
+
+          echo "path=$resolved_path" >> "$GITHUB_OUTPUT"
+          echo "relative_path=$TARGET_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java for Ghidra
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node.js for REA
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Download Ghidra
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ghidra-download" "$RUNNER_TEMP/ghidra-install"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "$GHIDRA_URL" \
+            --output "$RUNNER_TEMP/ghidra-download/$GHIDRA_ARCHIVE"
+          unzip -q "$RUNNER_TEMP/ghidra-download/$GHIDRA_ARCHIVE" \
+            -d "$RUNNER_TEMP/ghidra-install"
+
+          ghidra_dir="$(find "$RUNNER_TEMP/ghidra-install" -mindepth 1 -maxdepth 1 \
+            -type d -name 'ghidra_*_PUBLIC' -print -quit)"
+          if [[ -z "$ghidra_dir" || ! -x "$ghidra_dir/support/analyzeHeadless" ]]; then
+            echo "::error::Downloaded Ghidra archive does not contain support/analyzeHeadless."
+            exit 1
+          fi
+
+          echo "GHIDRA_INSTALL_DIR=$ghidra_dir" >> "$GITHUB_ENV"
+          echo "Ghidra $GHIDRA_VERSION installed at $ghidra_dir"
+
+      - name: Install REA CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "rea-agents@$REA_VERSION"
+          mkdir -p "$REPORT_DIR"
+          rea --version > "$REPORT_DIR/rea-version.txt"
+          java -version 2> "$REPORT_DIR/java-version.txt"
+
+      - name: Check REA and Ghidra readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          rea doctor --provider ghidra --json \
+            > "$REPORT_DIR/doctor.json" \
+            2> "$REPORT_DIR/doctor.stderr.log"
+          jq -e . "$REPORT_DIR/doctor.json" > /dev/null
+
+      - name: Analyze selected binary
+        shell: bash
+        env:
+          TARGET_PATH: ${{ steps.target.outputs.path }}
+          TARGET_RELATIVE_PATH: ${{ steps.target.outputs.relative_path }}
+        run: |
+          set -euo pipefail
+
+          rea analyze "$TARGET_PATH" --provider ghidra --json \
+            > "$REPORT_DIR/analysis.json" \
+            2> "$REPORT_DIR/analysis.stderr.log"
+          jq -e . "$REPORT_DIR/analysis.json" > /dev/null
+
+          target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
+          jq -n \
+            --arg target "$TARGET_RELATIVE_PATH" \
+            --arg sha256 "$target_sha" \
+            --arg commit "$GITHUB_SHA" \
+            --arg rea_version "$REA_VERSION" \
+            --arg ghidra_version "$GHIDRA_VERSION" \
+            --arg analysed_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            '{
+              target_path: $target,
+              target_sha256: $sha256,
+              source_commit: $commit,
+              rea_version: $rea_version,
+              ghidra_version: $ghidra_version,
+              analysed_at_utc: $analysed_at,
+              purpose: "Static native binary analysis; not a Linux port or recompilation."
+            }' > "$REPORT_DIR/metadata.json"
+
+          {
+            echo "## REA binary analysis"
+            echo
+            echo "- **Target:** `$TARGET_RELATIVE_PATH`"
+            echo "- **SHA-256:** `$target_sha`"
+            echo "- **REA:** `$REA_VERSION`"
+            echo "- **Ghidra:** `$GHIDRA_VERSION`"
+            echo "- **Source commit:** `$GITHUB_SHA`"
+            echo
+            echo "The full JSON report and provider diagnostics are available in the `rea-analysis` workflow artifact."
+            echo "This job analyzes a binary; it does not decompile the entire game into source or build a native Linux executable."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload REA analysis report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-analysis
+          path: ${{ runner.temp }}/rea-analysis-results/
+          if-no-files-found: warn
+          retention-days: 14
