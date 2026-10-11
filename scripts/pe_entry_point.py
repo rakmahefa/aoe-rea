@@ -8,7 +8,6 @@ address is a recovered function or that it is the game's main/gameplay entry.
 from __future__ import annotations
 
 import json
-import struct
 import sys
 from pathlib import Path
 from typing import Any
