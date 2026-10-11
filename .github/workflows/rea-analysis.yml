@@ -254,6 +254,91 @@ jobs:
             mv "$REPORT_DIR/function-selection.tmp.json" "$REPORT_DIR/function-selection.json"
             printf '%s\n' "- Function dossier selection: $selected_function ($selection_source; $function_status)" \
               >> "$GITHUB_STEP_SUMMARY"
+
+            # Explore a small, bounded set of direct internal callees from this dossier.
+            # These candidates are starting points, not assumed game entry points.
+            mkdir -p "$REPORT_DIR/callees"
+            : > "$REPORT_DIR/callees/results.ndjson"
+
+            mapfile -t callee_candidates < <(
+              jq -r '
+                [
+                  .normalized_result.callees[]?
+                  | select(
+                      (.classification.external != true)
+                      and (.classification.thunk != true)
+                      and (.address | type == "string" and test("^0x[0-9a-fA-F]+$"))
+                      and ((.name // "") | startswith("__SEH_") | not)
+                      and ((.name // "") != "__amsg_exit")
+                    )
+                ]
+                | reduce .[] as $callee (
+                    [];
+                    if any(.[]; .address == $callee.address)
+                    then .
+                    else . + [$callee]
+                    end
+                  )
+                | .[:4][]
+                | [.address, (.name // "unknown")]
+                | @tsv
+              ' "$REPORT_DIR/function.json"
+            )
+
+            for candidate in "${callee_candidates[@]}"; do
+              IFS=            jq -n \
+              '{selector: null, source: "PE optional-header entry point", status: "skipped", reason: "The PE declares no entry-point RVA and no manual function selector was supplied."}' \
+              > "$REPORT_DIR/function-selection.json"
+            echo "::warning::The PE declares no entry point and no manual function selector was supplied; skipping the optional function dossier."
+            echo "- Function dossier: skipped (no declared PE entry point)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload REA analysis report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rea-analysis
+          path: rea-analysis-results/
+          if-no-files-found: warn
+          retention-days: 14
+\t' read -r callee_address callee_name <<< "$candidate"
+              safe_name="$(printf '%s' "$callee_name" | tr -cs '[:alnum:]_-' '_' | cut -c1-60)"
+              report_file="callees/${callee_address#0x}_${safe_name}.json"
+              stderr_file="$REPORT_DIR/callees/${callee_address#0x}_${safe_name}.stderr.log"
+
+              set +e
+              rea function "$TARGET_PATH" "$callee_address" --provider ghidra --json \
+                > "$REPORT_DIR/$report_file" \
+                2> "$stderr_file"
+              callee_exit_code=$?
+              set -e
+
+              if [[ "$callee_exit_code" -eq 0 ]] && jq -e . "$REPORT_DIR/$report_file" > /dev/null 2>&1; then
+                callee_status="success"
+              else
+                callee_status="not_resolved"
+                rm -f "$REPORT_DIR/$report_file"
+                echo "::warning::REA could not produce a dossier for direct callee $callee_name ($callee_address)."
+              fi
+
+              jq -n \
+                --arg address "$callee_address" \
+                --arg name "$callee_name" \
+                --arg status "$callee_status" \
+                --arg report "$report_file" \
+                --arg stderr "callees/${callee_address#0x}_${safe_name}.stderr.log" \
+                '{address: $address, name: $name, status: $status, report: (if $status == "success" then $report else null end), stderr: $stderr}' \
+                >> "$REPORT_DIR/callees/results.ndjson"
+            done
+
+            jq -s \
+              --arg source_address "$selected_function" \
+              --arg source_kind "$selection_source" \
+              '{source_address: $source_address, source_kind: $source_kind, candidates_analyzed: length, results: .}' \
+              "$REPORT_DIR/callees/results.ndjson" > "$REPORT_DIR/callees/manifest.json"
+
+            echo "- Direct callee dossiers attempted: ${#callee_candidates[@]} (maximum 4)." >> "$GITHUB_STEP_SUMMARY"
+            rm -f "$REPORT_DIR/callees/results.ndjson"
           else
             jq -n \
               '{selector: null, source: "PE optional-header entry point", status: "skipped", reason: "The PE declares no entry-point RVA and no manual function selector was supplied."}' \
