@@ -55,6 +55,22 @@ class PEEntryPointTests(unittest.TestCase):
         self.assertFalse(result["has_entry_point"])
         self.assertIsNone(result["entry_point_va"])
 
+    def test_optional_header_too_small_is_rejected(self):
+        data = bytearray(make_pe())
+        coff_offset = 0x80 + 4
+        struct.pack_into("<H", data, coff_offset + 16, 24)
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "truncated-header.exe"
+            path.write_bytes(data)
+            process = subprocess.run(
+                [sys.executable, str(SCRIPT), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("optional header is too small", process.stderr)
+
     def test_invalid_signature_fails_with_diagnostic(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "invalid.exe"
