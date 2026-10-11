@@ -185,16 +185,17 @@ jobs:
             }' > "$REPORT_DIR/metadata.json"
 
           {
-            echo "## REA binary analysis"
-            echo
-            echo "- **Target:** `$TARGET_RELATIVE_PATH`"
-            echo "- **SHA-256:** `$target_sha`"
-            echo "- **REA:** `$REA_VERSION`"
-            echo "- **Ghidra:** `$GHIDRA_VERSION`"
-            echo "- **Source commit:** `$GITHUB_SHA`"
-            echo
-            echo "The full JSON report and provider diagnostics are available in the `rea-analysis` workflow artifact."
-            echo "This job analyzes a binary; it does not decompile the entire game into source or build a native Linux executable."
+            printf '%s\n' \
+              '## REA binary analysis' \
+              '' \
+              "- **Target:** \`$TARGET_RELATIVE_PATH\`" \
+              "- **SHA-256:** \`$target_sha\`" \
+              "- **REA:** \`$REA_VERSION\`" \
+              "- **Ghidra:** \`$GHIDRA_VERSION\`" \
+              "- **Source commit:** \`$GITHUB_SHA\`" \
+              '' \
+              'The full JSON report and provider diagnostics are available in the `rea-analysis` workflow artifact.' \
+              'This job analyzes a binary; it does not decompile the entire game into source or build a native Linux executable.'
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -n "$FUNCTION_SELECTOR" ]]; then
