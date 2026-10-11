@@ -9,7 +9,7 @@ on:
         type: string
         default: "retro/exe et dll/age3y.exe"
       function_selector:
-        description: Optional function name or address for a focused REA dossier
+        description: Override the automatic PE entry-point dossier with a function name or address
         required: false
         type: string
         default: ""
@@ -89,6 +89,9 @@ jobs:
 
           echo "path=$resolved_path" >> "$GITHUB_OUTPUT"
           echo "relative_path=$TARGET_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Test PE entry-point parser
+        run: python3 -m unittest discover -s tests -p 'test_pe_entry_point.py' -v
 
       - name: Set up Java for Ghidra
         uses: actions/setup-java@v6
@@ -198,18 +201,67 @@ jobs:
               'This job analyzes a binary; it does not decompile the entire game into source or build a native Linux executable.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ -n "$FUNCTION_SELECTOR" ]]; then
-            if [[ "$FUNCTION_SELECTOR" == -* || "${#FUNCTION_SELECTOR}" -gt 200 ]]; then
-              echo "::error::Function selector must be a short function name or address, not an option."
-              exit 1
+          python3 scripts/pe_entry_point.py "$TARGET_PATH" > "$REPORT_DIR/entry-point.json"
+          entry_point_va="$(jq -r '.entry_point_va // empty' "$REPORT_DIR/entry-point.json")"
+          selected_function="$FUNCTION_SELECTOR"
+          selection_source="manual input"
+
+          if [[ -z "$selected_function" ]]; then
+            selected_function="$entry_point_va"
+            selection_source="PE optional-header entry point"
+          fi
+
+          if [[ -n "$FUNCTION_SELECTOR" && ( "$FUNCTION_SELECTOR" == -* || "$FUNCTION_SELECTOR" == *$'\n'* || "$FUNCTION_SELECTOR" == *$'\r'* || "${#FUNCTION_SELECTOR}" -gt 200 ) ]]; then
+            echo "::error::Function selector must be a short single-line function name or address, not an option."
+            exit 1
+          fi
+
+          if [[ -n "$selected_function" ]]; then
+            jq -n \
+              --arg selector "$selected_function" \
+              --arg source "$selection_source" \
+              '{selector: $selector, source: $source, status: "pending"}' \
+              > "$REPORT_DIR/function-selection.json"
+
+            if [[ -n "$FUNCTION_SELECTOR" ]]; then
+              # Explicit user selection is authoritative: fail the run if it cannot be analyzed.
+              rea function "$TARGET_PATH" "$selected_function" --provider ghidra --json \
+                > "$REPORT_DIR/function.json" \
+                2> "$REPORT_DIR/function.stderr.log"
+              jq -e . "$REPORT_DIR/function.json" > /dev/null
+              function_status="success"
+            else
+              # The PE entry may be a CRT/startup stub rather than a useful recovered function.
+              # Keep the binary overview even if REA cannot produce this optional dossier.
+              set +e
+              rea function "$TARGET_PATH" "$selected_function" --provider ghidra --json \
+                > "$REPORT_DIR/function.json" \
+                2> "$REPORT_DIR/function.stderr.log"
+              function_exit_code=$?
+              set -e
+
+              if [[ "$function_exit_code" -eq 0 ]] && jq -e . "$REPORT_DIR/function.json" > /dev/null 2>&1; then
+                function_status="success"
+              else
+                function_status="not_resolved"
+                rm -f "$REPORT_DIR/function.json"
+                echo "::warning::REA could not produce a function dossier for the declared PE entry point $selected_function; the overview report is still available."
+              fi
             fi
 
-            rea function "$TARGET_PATH" "$FUNCTION_SELECTOR" --provider ghidra --json \
-              > "$REPORT_DIR/function.json" \
-              2> "$REPORT_DIR/function.stderr.log"
-            jq -e . "$REPORT_DIR/function.json" > /dev/null
-            echo "- **Function dossier:** `$FUNCTION_SELECTOR`" >> "$GITHUB_STEP_SUMMARY"
+            jq --arg status "$function_status" '. + {status: $status}' \
+              "$REPORT_DIR/function-selection.json" > "$REPORT_DIR/function-selection.tmp.json"
+            mv "$REPORT_DIR/function-selection.tmp.json" "$REPORT_DIR/function-selection.json"
+            printf '%s\n' "- Function dossier selection: $selected_function ($selection_source; $function_status)" \
+              >> "$GITHUB_STEP_SUMMARY"
+          else
+            jq -n \
+              '{selector: null, source: "PE optional-header entry point", status: "skipped", reason: "The PE declares no entry-point RVA and no manual function selector was supplied."}' \
+              > "$REPORT_DIR/function-selection.json"
+            echo "::warning::The PE declares no entry point and no manual function selector was supplied; skipping the optional function dossier."
+            echo "- Function dossier: skipped (no declared PE entry point)" >> "$GITHUB_STEP_SUMMARY"
           fi
+
       - name: Upload REA analysis report
         if: always()
         uses: actions/upload-artifact@v7
