@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -91,19 +91,19 @@ jobs:
           echo "relative_path=$TARGET_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java for Ghidra
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Node.js for REA
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
       - name: Cache Ghidra
         id: ghidra-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/ghidra-install
           key: ghidra-${{ runner.os }}-12.1.4-public-20260921-jdk21
@@ -211,7 +211,7 @@ jobs:
           fi
       - name: Upload REA analysis report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rea-analysis
           path: rea-analysis-results/
