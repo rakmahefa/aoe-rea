@@ -63,6 +63,10 @@ def inspect_entry_point(path: Path) -> dict[str, Any]:
     else:
         raise PEFormatError(f"Unsupported PE optional-header magic: 0x{magic:04x}.")
 
+    required_optional_size = max(20, image_base_offset + image_base_size)
+    if optional_size < required_optional_size:
+        raise PEFormatError("PE optional header is too small for the entry point and image base.")
+
     entry_rva = _read_uint(data, optional_offset + 16, 4, "AddressOfEntryPoint")
     image_base = _read_uint(
         data,
