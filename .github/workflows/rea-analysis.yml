@@ -101,7 +101,15 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Cache Ghidra
+        id: ghidra-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ghidra-install
+          key: ghidra-${{ runner.os }}-12.1.4-public-20260921-jdk21
+
       - name: Download Ghidra
+        if: steps.ghidra-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -112,10 +120,14 @@ jobs:
           unzip -q "$RUNNER_TEMP/ghidra-download/$GHIDRA_ARCHIVE" \
             -d "$RUNNER_TEMP/ghidra-install"
 
+      - name: Configure Ghidra
+        shell: bash
+        run: |
+          set -euo pipefail
           ghidra_dir="$(find "$RUNNER_TEMP/ghidra-install" -mindepth 1 -maxdepth 1 \
             -type d -name 'ghidra_*_PUBLIC' -print -quit)"
           if [[ -z "$ghidra_dir" || ! -x "$ghidra_dir/support/analyzeHeadless" ]]; then
-            echo "::error::Downloaded Ghidra archive does not contain support/analyzeHeadless."
+            echo "::error::Ghidra installation does not contain support/analyzeHeadless."
             exit 1
           fi
 
