@@ -49,8 +49,8 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 
 1. Open **Actions → REA binary analysis → Run workflow**.
 2. Enter the repository-relative path of a tracked `.exe` or `.dll`. The default target is `retro/exe et dll/age3y.exe`.
-3. Optionally enter a function name or address (for example, a Ghidra/REA-recognized symbol or `0x...`) to produce a focused function dossier in addition to the binary overview.
-4. Download the `rea-analysis` artifact from the completed run. It contains JSON evidence, target SHA-256 metadata, provider diagnostics, and any optional function report. Artifacts are retained for 14 days.
+3. By default, the workflow reads the PE optional header and attempts a focused REA function dossier at the declared entry-point address. This is commonly runtime/CRT startup code; **it is not automatically the game's main or gameplay function**. Set `function_selector` to a function name or address to override the automatic selection.
+4. Download the `rea-analysis` artifact from the completed run. It contains the overview JSON, PE entry-point metadata, function-selection status, target SHA-256 metadata, provider diagnostics, and a function dossier when REA can resolve one. Artifacts are retained for 14 days.
 
 The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
 
@@ -70,6 +70,8 @@ A release must not be labelled a complete native port merely because compilation
 ## Repository contents
 
 - `retro/exe et dll/` — reference Windows executables and libraries currently collected for analysis.
+- `scripts/pe_entry_point.py` — reads the declared PE entry-point address using Python's standard library, without executing the binary.
+- `tests/test_pe_entry_point.py` — synthetic PE32/PE32+ regression tests for the entry-point parser.
 - `README.md` — project objective, workflow, and release direction.
 
 As reconstruction progresses, keep implementation code, tests, evidence notes, and build configuration clearly separated from the original reference binaries.
