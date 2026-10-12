@@ -48,20 +48,30 @@ For every substantial finding, record the input file/version, relevant function 
 The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) runs REA and Ghidra on a GitHub-hosted Linux runner:
 
 1. Open **Actions → REA binary analysis → Run workflow**.
-2. Enter the repository-relative path of a tracked `.exe` or `.dll`. The default target is `retro/exe et dll/age3y.exe`.
-3. By default, the workflow reads the PE optional header and attempts a focused REA function dossier at the declared entry-point address. This is commonly runtime/CRT startup code; **it is not automatically the game's main or gameplay function**. Set `function_selector` to a function name or address to override the automatic selection.
-4. Set the optional `search_query` input to search for a gameplay clue. Try one term per run, such as `unit`, `move`, `path`, `food`, `resource`, `build`, `train`, or `AI`. The workflow saves REA's result to `search.json` in the artifact. A hit is only a lead: inspect the match context and cross-references before classifying an address as gameplay code.
-5. Download the `rea-analysis` artifact from the completed run. Function-analysis runs contain the overview JSON, PE entry-point metadata, function-selection status, target SHA-256 metadata, provider diagnostics, the selected function dossier, and a `callees/manifest.json` plus up to four direct internal-callee dossiers. Search runs contain `search.json`; search-only runs also include target metadata but intentionally omit `analysis.json` and `function.json`. Artifacts are retained for 14 days.
+2. Keep `target_path` at `retro/exe et dll/age3y.exe` unless there is a documented reason to change the reference binary.
+3. Use `search_query` for one literal string term per run, such as `unit`, `move`, `path`, `food`, `resource`, `build`, `train`, or `AI`. Results are string-data addresses, not function entrypoints.
+4. Use `xref_address` with an address from `search.json` to inspect references to that string/data, for example `0xc36e20` (unit-obstruction diagnostic) or `0xc19dc0` (the `kbCanPath2` description). The workflow saves `xrefs.json` and its provider diagnostics to the artifact.
+5. Once cross-references identify a plausible code address, run again with `function_selector` set to that function address to obtain the function dossier and up to four direct internal-callee dossiers. Do not pass a string address as `function_selector` unless a tool report confirms it is a function.
+6. Download `rea-analysis`. Search-only and xref-only runs include target metadata and their respective result files; function-analysis runs include the overview, entry-point metadata, function dossier and callee manifest. Artifacts are retained for 14 days.
 
-The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It attempts a bounded dossier for up to four direct internal callees after a source function has been resolved. These are investigation leads, not automatically verified game-logic functions. When `search_query` is set and `function_selector` is blank, it skips the default entry-point/callee pass so a broad search does not spend time decompiling likely CRT startup code; set a selector on a separate run to inspect a promising hit. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
+When `search_query` or `xref_address` is set without `function_selector`, the workflow skips the default PE entry-point/function pass so focused exploration does not waste time on likely CRT startup code. The workflow is read-only and performs static analysis only: it does not reconstruct source automatically or build a native Linux executable. Search matches and cross-references are leads, not proof of gameplay semantics.
 
 ## Current investigation status (2026-10-12)
 
-The latest verified analysis at the time of this update is [workflow run #14](https://github.com/rakmahefa/aoe-rea/actions/runs/38249737918), which examined `0x5562ad` in `retro/exe et dll/age3y.exe`. The function appears to parse XML child nodes named `Particle`, read values including `filename` and `timeoff`, and delegate a constructed structure to `0x598def`. Together with runs #12–#13, this establishes a particle-definition resource-loading path (`0x555e86` → `0x555c89` → `0x5562ad`), not the core game simulation.
+The latest verified Actions run is [REA binary analysis #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057), which ran a literal, case-insensitive string search for `unit` in `retro/exe et dll/age3y.exe`. The artifact contains 1,307 matching defined strings in `search.json`; the function-analysis step was intentionally skipped, so this run did not recover function pseudocode.
 
-The artifact confirms that `0x5562ad` belongs to the particle-definition loading path: its only recovered string references are `Particle`, `filename`, and `timeoff`, and its direct caller is `0x555c89`. The suggested `0x555de7` is called with a small structure in that same path, but its behavior is unconfirmed; do not prioritize it over gameplay discovery by default. After the optional `search_query` input is available on the default branch, use terms such as `unit`, `move`, `path`, `food`, `resource`, `build`, `train`, or `AI` to find leads, then analyze promising addresses with `function_selector`. Search hits are clues, not proof of simulation behavior. Before every investigation, check whether a newer Actions run exists.
+High-value leads from that string inventory include:
 
-See [the French session handoff](docs/SESSION_HANDOFF.md) for the verified run history, binary identity, workflow steps, current lead, caveats, and a ready-to-copy prompt for a new chat. All interpretations remain provisional Ghidra findings: no original source or native Linux executable has been recovered or built.
+- `0xc36e20`: `Unit %d (%S) has a non-unit obstruction type %d`; nearby `0xc36e8c` is the source-path string `.\unit.cpp`. This is a promising native unit-system clue, but its callers/references must be inspected before assigning behavior.
+- `0xc19dc0` and `0xc19e68`: descriptions for `kbCanPath2` and `kbCanSimPath`, which are path feasibility queries exposed to the knowledge-base/AI layer.
+- `0xc1b0c8`, `0xc17d40`, and `0xc17dd8`: descriptions for `kbUnitCount`, `kbUnitCostPerResource`, and `kbCanAffordUnit`, offering leads toward unit state and economy.
+- `0xbaee38` and `0xc30d30`: script-facing descriptions for `hcUnitMoveToPos` and `trUnitMoveToPoint`, useful leads for movement command flow.
+
+These addresses are addresses of matched strings, not evidence that executable code begins there. Several hits are script API documentation or UI/resource names. The next step is cross-reference analysis—start with `xref_address=0xc36e20` to trace the native unit diagnostic, then `xref_address=0xc19dc0` for the pathfinding query—and only then decompile a code address supported by the xref results.
+
+The earlier runs #12–#14 remain a verified particle-definition loading path (`0x555e86` → `0x555c89` → `0x5562ad`, with `Particle`, `filename`, and `timeoff`). That subsystem is not the priority unless a later cross-reference links it to gameplay.
+
+See [the French session handoff](docs/SESSION_HANDOFF.md) for the run history, target identity, evidence, confidence and next workflow inputs. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
