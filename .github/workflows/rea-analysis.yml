@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ""
+      xref_address:
+        description: Optional address to inspect cross-references to/from (for example 0xc36e20)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -160,8 +165,34 @@ jobs:
             2> "$REPORT_DIR/doctor.stderr.log"
           jq -e . "$REPORT_DIR/doctor.json" > /dev/null
 
+      - name: Prepare metadata for focused queries
+        if: ${{ inputs.search_query != '' || inputs.xref_address != '' }}
+        shell: bash
+        env:
+          TARGET_PATH: ${{ steps.target.outputs.path }}
+          TARGET_RELATIVE_PATH: ${{ steps.target.outputs.relative_path }}
+        run: |
+          set -euo pipefail
+          target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
+          jq -n \
+            --arg target "$TARGET_RELATIVE_PATH" \
+            --arg sha256 "$target_sha" \
+            --arg commit "$GITHUB_SHA" \
+            --arg rea_version "$REA_VERSION" \
+            --arg ghidra_version "$GHIDRA_VERSION" \
+            --arg analysed_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            '{
+              target_path: $target,
+              target_sha256: $sha256,
+              source_commit: $commit,
+              rea_version: $rea_version,
+              ghidra_version: $ghidra_version,
+              analysed_at_utc: $analysed_at,
+              purpose: "Static native search/cross-reference analysis; not a Linux port or recompilation."
+            }' > "$REPORT_DIR/metadata.json"
+
       - name: Analyze selected binary
-        if: ${{ inputs.search_query == '' || inputs.function_selector != '' }}
+        if: ${{ (inputs.search_query == '' && inputs.xref_address == '') || inputs.function_selector != '' }}
         shell: bash
         env:
           TARGET_PATH: ${{ steps.target.outputs.path }}
@@ -359,27 +390,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Search-only runs skip the default entry-point dossier. Preserve target provenance.
-          if [[ ! -f "$REPORT_DIR/metadata.json" ]]; then
-            target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
-            jq -n \
-              --arg target "$TARGET_RELATIVE_PATH" \
-              --arg sha256 "$target_sha" \
-              --arg commit "$GITHUB_SHA" \
-              --arg rea_version "$REA_VERSION" \
-              --arg ghidra_version "$GHIDRA_VERSION" \
-              --arg analysed_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-              '{
-                target_path: $target,
-                target_sha256: $sha256,
-                source_commit: $commit,
-                rea_version: $rea_version,
-                ghidra_version: $ghidra_version,
-                analysed_at_utc: $analysed_at,
-                purpose: "Static native binary search; not a Linux port or recompilation."
-              }' > "$REPORT_DIR/metadata.json"
-          fi
-
           if [[ -z "$SEARCH_QUERY" || "$SEARCH_QUERY" == -* || "$SEARCH_QUERY" == *$'\n'* || "$SEARCH_QUERY" == *$'\r'* || "${#SEARCH_QUERY}" -gt 200 ]]; then
             echo "::error::Search query must be a short, single-line term, not an option."
             exit 1
@@ -390,6 +400,26 @@ jobs:
             2> "$REPORT_DIR/search.stderr.log"
           jq -e . "$REPORT_DIR/search.json" > /dev/null
           printf '%s\n' "- Gameplay clue search: `$SEARCH_QUERY` (see `search.json`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Inspect address cross-references
+        if: ${{ inputs.xref_address != '' }}
+        shell: bash
+        env:
+          TARGET_PATH: ${{ steps.target.outputs.path }}
+          XREF_ADDRESS: ${{ inputs.xref_address }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$XREF_ADDRESS" =~ ^0[xX][0-9a-fA-F]{1,8}$ ]]; then
+            echo "::error::xref_address must be a PE32 virtual address such as 0xc36e20."
+            exit 1
+          fi
+
+          rea xrefs "$TARGET_PATH" "$XREF_ADDRESS" --provider ghidra --json \
+            > "$REPORT_DIR/xrefs.json" \
+            2> "$REPORT_DIR/xrefs.stderr.log"
+          jq -e . "$REPORT_DIR/xrefs.json" > /dev/null
+          printf '%s\n' "- Cross-references for `$XREF_ADDRESS`: see `xrefs.json`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
         if: always()
