@@ -54,6 +54,14 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 
 The workflow pins REA and Ghidra versions, validates that the target is a tracked repository file, and uses read-only GitHub permissions. It attempts a bounded dossier for up to four direct internal callees after a source function has been resolved. These are investigation leads, not automatically verified game-logic functions. It performs analysis only: it does not commit reports to the repository, publish analysis output as a GitHub Release, reconstruct source code automatically, or build a native Linux executable. Workflow dispatch is available once this workflow is present on the repository's default branch.
 
+## Current investigation status (2026-10-12)
+
+The latest verified analysis at the time of this update is [workflow run #14](https://github.com/rakmahefa/aoe-rea/actions/runs/38249737918), which examined `0x5562ad` in `retro/exe et dll/age3y.exe`. The function appears to parse XML child nodes named `Particle`, read values including `filename` and `timeoff`, and delegate a constructed structure to `0x598def`. Together with runs #12–#13, this establishes a particle-definition resource-loading path (`0x555e86` → `0x555c89` → `0x5562ad`), not the core game simulation.
+
+The next suggested manual selector is `0x555de7`, called with a small structure assembled from parsed values. Its behavior is not yet confirmed. Before continuing, check whether a newer Actions run exists.
+
+See [the French session handoff](docs/SESSION_HANDOFF.md) for the verified run history, binary identity, workflow steps, current lead, caveats, and a ready-to-copy prompt for a new chat. All interpretations remain provisional Ghidra findings: no original source or native Linux executable has been recovered or built.
+
 ## Linux build and release plan
 
 The intended release pipeline is:
