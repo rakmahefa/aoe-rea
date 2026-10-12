@@ -26,10 +26,11 @@ Le projet vise à étudier Age of Empires III à l’aide de REA et Ghidra, puis
 
 1. Ouvrir **Actions → REA binary analysis → Run workflow** dans le dépôt.
 2. Garder `target_path` sur `retro/exe et dll/age3y.exe`, sauf raison claire de changer de binaire.
-3. Renseigner l’entrée facultative `function_selector` avec une adresse (par exemple `0x555de7`) ou un nom de fonction si nécessaire.
-4. Lancer le workflow puis attendre son état `success` ou `failure`.
-5. Ouvrir le run, télécharger l’artifact `rea-analysis` et inspecter au minimum `metadata.json`, `function-selection.json`, `function.json` et `callees/manifest.json`, puis les dossiers de fonctions qui ont réussi.
-6. Avant de conseiller une nouvelle cible, contrôler la dernière exécution réelle dans GitHub Actions : l’utilisateur peut avoir lancé un run plus récent depuis la rédaction de ce document.
+3. Utiliser `search_query` (disponible après fusion de cette PR) pour rechercher un terme à la fois : `unit`, `move`, `path`, `food`, `resource`, `build`, `train`, `AI`. Le rapport `search.json` fournit des pistes ; un résultat n'établit pas à lui seul qu'une fonction appartient au gameplay.
+4. Pour un candidat prometteur issu d'une recherche, lancer un second run en renseignant `function_selector` avec son adresse afin d'obtenir un dossier de fonction et ses références/callees.
+5. Lancer le workflow puis attendre son état `success` ou `failure`.
+6. En mode recherche seule, inspecter `metadata.json`, `search.json` et `search.stderr.log` au besoin ; les fichiers `analysis.json`, `function.json` et `callees/manifest.json` n'existent que lorsque l'étape d'analyse de fonction a été exécutée.
+7. Avant de conseiller une nouvelle cible, contrôler la dernière exécution réelle dans GitHub Actions.
 
 Le workflow réalise de l’analyse statique et publie un artifact temporaire (rétention indiquée dans le README/workflow). Il ne génère pas automatiquement du code source, ne produit pas de binaire Linux et n’enregistre pas les rapports dans le dépôt.
 
@@ -61,17 +62,26 @@ Le rapport synthétique associé à ce run indiquait `0x555de7` comme prochaine 
 
 ## 5. Prochaine étape conseillée
 
-**Prochaine cible à vérifier : `0x555de7`.**
+**Priorité suivante : découvrir un point d'entrée vers le gameplay, pas poursuivre les particules par défaut.**
 
-Cette adresse est une piste de l’analyse du run #14 : la fonction sélectionnée `0x5562ad` lui transmet une petite structure construite à partir de valeurs extraites de XML. Il faut analyser son dossier avant d’affirmer s’il s’agit d’un parseur de tuple/vecteur, d’une conversion, ou d’une autre routine.
+L'artifact réel du run #14 confirme un chargeur de définitions de particules XML :
 
-Après le prochain run :
+- `0x5562ad` parcourt des enfants `Particle` et référence les chaînes `filename` et `timeoff`.
+- Son unique appelant indiqué est `0x555c89`.
+- Le rapport de fonction sélectionne des callees bas niveau à `0x401113`, `0x401398` et `0x4013b0`; ces dossiers ne donnent pas de preuve directe de simulation, déplacement ou économie.
+- `0x555de7` est appelé avec une petite structure remplie à partir de valeurs XML. Son rôle reste **inconnu** sans dossier propre ; il est secondaire tant qu'aucune relation au gameplay n'est établie.
 
-1. Vérifier que le run sélectionne bien `0x555de7` et qu’il est terminé.
-2. Lire le pseudocode, les appels directs, les chaînes et le manifeste de callees.
-3. Classer chaque fonction comme **runtime générique**, **parseur/chargement de ressources**, **plateforme/UI**, **moteur probable** ou **inconnu**, en indiquant les preuves et le niveau de confiance.
-4. Ne pas suivre indéfiniment les utilitaires d’allocation/chaînes ou les effets de particules. En parallèle, rechercher des fonctions clairement liées aux entités/unités, à la simulation, au déplacement/pathfinding, aux ressources/économie, à l’IA, à l’ordre du jeu et à la boucle de tick.
-5. Constituer un inventaire d’adresses corroborées et des relations de call graph. Un nom de chaîne ou une seule référence est un indice, pas une preuve suffisante.
+### Recherche gameplay à lancer
+
+Après fusion de la modification du workflow qui ajoute `search_query` :
+
+1. Exécuter une recherche par terme dans `retro/exe et dll/age3y.exe`, en commençant par `unit`, puis `move`, `path`, `food`, `resource`, `build`, `train` et `AI`. Les noms ne sont que des heuristiques ; des chaînes de ressources ou d'interface peuvent produire des faux positifs.
+2. Pour chaque résultat utile, relever l'adresse, le contexte de la chaîne, ses références croisées et la fonction associée. Ne pas classer une adresse comme gameplay sur un mot isolé.
+3. Relancer le workflow avec `function_selector` sur les candidats plausibles et examiner pseudocode, assembly, callers, callees et références.
+4. Classer l'évidence comme **runtime générique**, **chargement de ressources**, **plateforme/UI**, **moteur probable** ou **inconnu**, avec niveau de confiance et inconnues.
+5. Privilégier en premier les pistes corroborées vers entités/unités, état et boucle de simulation, ordres, déplacement/pathfinding, économie/collecte, production et IA. Revenir à `0x555de7` uniquement si les nouvelles preuves le justifient.
+
+La documentation REA expose les commandes natives `search`, `function` et `xrefs`. Les invocations et résultats restent une analyse statique. Toute conclusion gameplay doit citer l'artifact, l'adresse et le contexte observé, pas seulement le nom de fonction attribué par Ghidra.
 
 ## 6. Règles de travail pour la prochaine session
 
