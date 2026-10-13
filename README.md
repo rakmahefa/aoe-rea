@@ -58,26 +58,28 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #26](https://github.com/rakmahefa/aoe-rea/actions/runs/38424403596). This run attempted `function_selector=0x8827cc`, based on the callback label found while analyzing the script registration routine in run #25. The analysis failed because REA/Ghidra reports **"No procedure exists at the requested address: 0x8827cc"**.
+The latest verified attempt is [REA binary analysis #27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077). This repeated the same invalid selector from run #26: `function_selector=0x8827cc`. The intended xref-only diagnostic was **not run**, because the workflow input still set `FUNCTION_SELECTOR=0x8827cc` and left `xref_address` blank.
 
-### Runs #25–26 — pathfinding API callbacks: confirmed registration, unresolved targets
+### Runs #25–27 — pathfinding API callbacks: registrations found, code not yet resolved
 
-Run #25 resolved the xref site `0x889735` to `FUN_00885d07`, a large routine spanning `0x885d07–0x890373` (42,605 bytes). Its pseudocode registers script-callable knowledge-base APIs by name, callback pointer, argument count, parameter metadata and description. The registration calls map:
+Run #25 resolved xref site `0x889735` to `FUN_00885d07`, a large routine spanning `0x885d07–0x890373` (42,605 bytes). Its pseudocode registers script-callable knowledge-base APIs by name, callback pointer, argument count, parameter metadata and description:
 - `kbCanSimPath` → `LAB_0088277e` (address `0x88277e`), 8 arguments.
 - `kbCanPath2` → `LAB_008827cc` (address `0x8827cc`), 8 arguments.
 
-The embedded descriptions document both as Boolean path checks for a unit type between two vectors, with a range. That is evidence of their exposed script-level contract, but the `LAB_...` names are Ghidra labels, **not confirmed procedure entry names**.
+The embedded API descriptions identify both as Boolean path checks for a unit type between two vectors, with a range. This records the script-level contract but does not prove the callbacks' native implementation. `LAB_...` labels are not necessarily function entries.
 
-Run #26 tested `function_selector=0x8827cc` and failed during **Analyze selected binary**. The artifact's `function.json` error states that no procedure exists at that exact address. Ghidra setup and readiness succeeded; the failure is an address-resolution/selection problem, not evidence that the workflow installation itself is broken. Because the explicit selector was invalid, no callback pseudocode was recovered. Do not repeat `function_selector=0x8827cc` or assume `0x88277e` is a valid procedure entry without further evidence.
+Run #26 attempted `function_selector=0x8827cc` and failed because REA reported `No procedure exists at the requested address: 0x8827cc`. Run #27 repeated that same selector and produced the same error. In run #27, the job's environment confirms `FUNCTION_SELECTOR: 0x8827cc`; because `xref_address` was left blank, no xref diagnostic was executed. Ghidra setup and readiness passed in both runs; this is still an address-resolution/selection issue, not evidence of a broken installation.
 
-Run #26 details:
-- URL: [REA binary analysis #26](https://github.com/rakmahefa/aoe-rea/actions/runs/38424403596)
-- Input: `function_selector=0x8827cc`; `search_query` and `xref_address` blank.
+### Run #27 — confirmed details
+
+- URL: [REA binary analysis #27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077)
+- Input actually used: `function_selector=0x8827cc`; `search_query` and `xref_address` blank.
+- Artifact: `rea-analysis`, run ID `38433174077`, artifact ID `11832516485`.
+- `function.json` records `operation=analyze_function` and `No procedure exists at the requested address: 0x8827cc`.
 - Target: `retro/exe et dll/age3y.exe`; SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Run ID `38424403596`; artifact ID `11829135145`; analyzed commit `1bc90c969386fa8d1771685a07a9e4baa63987a2`.
-- REA 6.4.0, Ghidra 12.1.4.
+- Analyzed commit: `d8a134911c04bb51cd3f3369563ccedd9ad96a06`; REA 6.4.0; Ghidra 12.1.4.
 
-Next, use an **xref-only** run against the callback label (`xref_address=0x8827cc`; leave `function_selector` and `search_query` blank) to see which native instructions refer to it and whether the report exposes useful surrounding code references. Treat this as a diagnostic, not a guaranteed resolution: if it only returns the registration site, the analysis workflow needs a way to inspect a code address or find the procedure containing a label instead of requiring an exact procedure entry. Do not simply retry the same invalid function selector.
+**Correct next input:** select `xref_address` and enter `0x8827cc`; leave `function_selector` empty. Do not enter this address in both fields. This is a diagnostic to inspect references to the callback label. If it only exposes the registration site, the workflow will need a code-address / containing-procedure inspection capability; do not repeat the invalid selector.
 
 ### Geometry findings from runs #20–23
 
@@ -87,7 +89,7 @@ Next, use an **xref-only** run against the callback label (`xref_address=0x8827c
 - **Run #23**: `FUN_00483a6a` runs conditional checks, returns a code between 0 and 4, and may set bits in the associated object's state byte at offset `+0x1b`. Several calls use unresolved indirect dispatches, so the meanings of the codes and bits remain unknown.
 - **Run #24**: an xref query for the `kbCanPath2` documentation string at `0xc19dc0` returned reference site `0x889735`, leading to the registration routine analyzed in run #25.
 
-Runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. Run #25 establishes how two path-checking script APIs are registered and identifies callback labels, but run #26 shows that the callback label cannot be analyzed as a procedure entry with the current workflow. Keep geometric occupancy and pathfinding separate until the native callback behavior is recovered.
+Runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. Run #25 establishes how two path-checking script APIs are registered, but their callback labels are not yet resolved to analyzable native procedures. Keep geometric occupancy and pathfinding separate until callback behavior is recovered.
 
 Several earlier functions have non-contiguous Ghidra body ranges; verify control flow before treating every distant range as a conventional function body. Runs #12–14 documented a separate particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
 
