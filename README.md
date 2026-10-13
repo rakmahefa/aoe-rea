@@ -58,17 +58,21 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085). It ran REA's cross-reference query against the string address `0xc36e20` in `retro/exe et dll/age3y.exe`.
+The latest verified analysis is [REA binary analysis #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501). It used `function_selector=0x6a15ca`, the code address found by run #19's cross-reference query for the unit obstruction diagnostic.
 
-The result in `xrefs.json` is a single direct reference address: `0x6a15ca`. This is a **reference site**, not yet a confirmed function entry or a gameplay implementation. The xrefs operation reports address references without their kinds; the next step is to select the function containing this address using `function_selector=0x6a15ca`, then inspect its pseudocode, instructions, callers and callees.
+REA successfully resolved the containing Ghidra procedure as `FUN_004839bb`, entry address `0x4839bb`. Its pseudocode:
+- checks for a valid associated object at `this+0x90`;
+- checks the object's byte field at offset `0x18` and emits `Unit %d (%S) has a non-unit obstruction type %d` when it is not `1`, then returns failure;
+- otherwise chooses between `FUN_00483d4c` and `FUN_004a5558` using a property/flag test, with coordinate-like values and dimensions from the associated structure;
+- calls `FUN_00483a6a` and then `FUN_0048380f`.
 
-The address `0xc36e20` holds the diagnostic string `Unit %d (%S) has a non-unit obstruction type %d`; the nearby `0xc36e8c` holds the source-path string `.\\unit.cpp`. This is a promising native unit-system lead, but the code behavior remains unclassified until the referencing function is inspected.
+The recovered `FUN_0048380f` pseudocode converts four float bounds to map coordinates, clamps them to the grid dimensions, compares old and new cells, updates spatial-cell membership and invokes insertion/removal helpers. This provides **medium-confidence evidence of unit obstruction/spatial-grid bookkeeping** around `FUN_004839bb`; it does not yet establish that the target implements pathfinding or movement itself.
 
-Run #18's `unit` search also identified leads toward pathfinding (`kbCanPath2` at `0xc19dc0`, `kbCanSimPath` at `0xc19e68`), unit counts (`kbUnitCount` at `0xc1b0c8`), economy (`kbUnitCostPerResource` at `0xc17d40`, `kbCanAffordUnit` at `0xc17dd8`), and movement commands (`hcUnitMoveToPos` at `0xbaee38`, `trUnitMoveToPoint` at `0xc30d30`). These are string addresses and API descriptions, not confirmed native function entries.
+Caveat: Ghidra assigns `FUN_004839bb` three non-contiguous body ranges (`0x4839bb–0x483a69`, `0x4b8f9e–0x4b8fc8`, and `0x6a1598–0x6a15e8`), and the combined span is over 2.2 MB. The distant branch ranges could be recovered cold blocks, but this unusual function-body layout warrants checking the instructions/call graph before relying on every inferred boundary. The selected reference instruction at `0x6a15ca` is in the third range.
 
-The earlier runs #12–#14 established a separate particle-definition loading path (`0x555e86` → `0x555c89` → `0x5562ad`, with `Particle`, `filename`, and `timeoff`). It is not the current priority unless later evidence links it to gameplay.
+The next useful target is `0x483d4c`, a direct callee on the normal branch that appears to process the obstruction/geometry data. After inspecting its dossier, compare the alternate helper `0x4a5558` and the follow-up `0x483a6a` if needed. The #18 string search still provides independent leads for pathfinding (`kbCanPath2` at `0xc19dc0`, `kbCanSimPath` at `0xc19e68`), unit counts, economy and script-facing movement commands.
 
-See [the French session handoff](docs/SESSION_HANDOFF.md) for the run history, target identity, evidence, confidence and next workflow inputs. No original source or native Linux executable has been recovered or built.
+The earlier runs #12–#14 established a separate particle-definition loading path. It remains a lower priority unless later evidence links it to gameplay. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
