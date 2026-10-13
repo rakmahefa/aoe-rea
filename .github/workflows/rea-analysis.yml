@@ -445,7 +445,7 @@ jobs:
             > "$REPORT_DIR/instruction.json" \
             2> "$REPORT_DIR/instruction.stderr.log"
           jq -e . "$REPORT_DIR/instruction.json" > /dev/null
-          printf '%s\\n' "- Native instruction at `$INSTRUCTION_ADDRESS`: see `instruction.json`" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "- Native instruction at `$INSTRUCTION_ADDRESS`: see `instruction.json`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
         if: always()
