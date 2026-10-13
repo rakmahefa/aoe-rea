@@ -2,7 +2,7 @@
 
 **Mise à jour : 13 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849)
+**Dernier run vérifié lors de la rédaction :** [REA binary analysis #22](https://github.com/rakmahefa/aoe-rea/actions/runs/38354872448)
 
 ## 1. But du projet
 
@@ -14,7 +14,7 @@ Le projet vise à étudier Age of Empires III à l’aide de REA et Ghidra, puis
 
 - Dépôt GitHub : https://github.com/rakmahefa/aoe-rea
 - Branche principale : `main`
-- Commit `main` observé lors de cette mise à jour : `97a2e081d5cbf72c161756dba16599cf80fb61f8` (fusion de la PR #7). Vérifier de nouveau le commit avant de poursuivre.
+- Commit `main` observé lors de cette mise à jour : `ad539edede393f8d954bea01266e8d31fb4121f5` (fusion de la PR #8). Vérifier de nouveau le commit avant de poursuivre.
 - Workflow manuel : [REA binary analysis](https://github.com/rakmahefa/aoe-rea/actions/workflows/rea-analysis.yml)
 - Fichier analysé par défaut : `retro/exe et dll/age3y.exe`
 - SHA-256 du binaire : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`
@@ -51,45 +51,49 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) | Xrefs de `0xc36e20` | Succès. `xrefs.json` retourne une référence directe à `0x6a15ca`. Cette adresse est le site d'une référence ; la fonction qui la contient et son rôle gameplay restent à inspecter. |
 | [#20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501) | Fonction contenant `0x6a15ca` | Succès. REA résout `FUN_004839bb` (entrée `0x4839bb`). Le pseudocode vérifie un type d'obstruction, puis appelle des helpers de géométrie et de mise à jour spatiale. Piste de gestion d'obstruction/grille spatiale, confiance moyenne, avec limites liées aux plages de fonction non contiguës. |
 | [#21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849) | `function_selector=0x483d4c` | Succès. `FUN_00483d4c` (89 octets contigus) calcule les quatre coins d’un rectangle à partir de deux coordonnées et de deux dimensions, puis écrit des champs indicateurs. Dans le contexte de #20, cela suggère une empreinte géométrique liée à l’obstruction ; les champs et le rôle exact restent à confirmer. Cette fonction est aussi appelée depuis deux autres procédures. |
+| [#22](https://github.com/rakmahefa/aoe-rea/actions/runs/38354872448) | `function_selector=0x4a5558` | Succès. `FUN_004a5558` calcule quatre paires de coordonnées à partir de plusieurs paramètres flottants, puis appelle `FUN_004a5489` pour choisir des indices/champs associés aux sommets. Cette branche semble produire une forme orientée plutôt qu’un simple rectangle aligné sur les axes ; interprétation géométrique plausible, sémantique exacte non confirmée. |
 
-### Dernier run en détail — #21
+### Dernier run en détail — #22
 
-Le [run #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849) s'est terminé avec succès le 13 octobre 2026.
+Le [run #22](https://github.com/rakmahefa/aoe-rea/actions/runs/38354872448) s'est terminé avec succès le 13 octobre 2026. La PR #8, qui documentait les runs #19–21, est fusionnée dans `main`.
 
-- Input effectif : `function_selector=0x483d4c` ; recherche et xrefs vides.
-- Artifact : `rea-analysis` (run ID `38350963849`, artifact ID `11791420795`).
+- Input effectif : `function_selector=0x4a5558` ; `search_query` et `xref_address` vides.
+- Artifact : `rea-analysis` (run ID `38354872448`, artifact ID `11792938137`).
 - Binaire : `retro/exe et dll/age3y.exe`.
 - SHA-256 : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Commit analysé : `97a2e081d5cbf72c161756dba16599cf80fb61f8`.
+- Commit analysé : `ad539edede393f8d954bea01266e8d31fb4121f5`.
 - REA `6.4.0`, Ghidra `12.1.4`.
-- `function-selection.json` indique `selector: 0x483d4c`, `source: manual input`, `status: success`.
-- La procédure sélectionnée est `FUN_00483d4c`, non externe et non thunk ; corps unique `0x483d4c–0x483da4`, 89 octets, sans plage non contiguë.
-- Il s'agit d'une fonction feuille : aucun callee ni chaîne référencée dans ce dossier.
-- Les références entrantes comprennent `FUN_004839bb` via l'appel à `0x483d4c` au site `0x483a47`, ainsi que les procédures `FUN_00497884` et `FUN_004e4a30`. Ce dernier point indique que la routine peut être partagée.
+- `function-selection.json` indique `selector: 0x4a5558`, `source: manual input`, `status: success`.
+- Fonction sélectionnée : `FUN_004a5558`, non externe et non thunk. Corps de 265 octets réparti sur les plages `0x4a5558–0x4a5651` et `0x4b8fdf–0x4b8fed`.
+- Callee récupérée : `FUN_004a5489`, entrée `0x4a5489`, dossier `callees/4a5489_FUN_004a5489.json`. Son corps compte 251 octets sur plusieurs plages non contiguës.
+- Appelants de `FUN_004a5558` rapportés par Ghidra : `FUN_004839bb`, `FUN_00497884`, `FUN_004e4a30` et `FUN_009c754c`. Le helper peut donc être partagé, même si le contexte de `FUN_004839bb` est lié au chemin d'obstruction étudié.
 
-Résumé du pseudocode :
-1. Lit l'objet de sortie reçu en premier argument.
-2. Calcule les bornes `x-w`, `y-h`, `x-w`, `y+h`, `x+w`, `y+h`, `x+w`, `y-h`, puis les écrit à partir des offsets `+0x20` à `+0x3c`. Ce sont les quatre coins d'un rectangle exprimés sous forme de quatre paires de coordonnées.
-3. Écrit aussi les octets `+0x1e=4`, `+0x1f=5`, `+0x1c=0`, `+0x1d=1`, et `+0x19=0x40`. Le sens exact de ces champs n'est pas établi.
+Résumé du pseudocode de `FUN_004a5558` :
+1. Reçoit une structure de sortie, deux coordonnées centrales apparentes et quatre autres paramètres flottants.
+2. Calcule quatre points à partir de combinaisons et produits de ces paramètres, puis écrit les coordonnées dans la zone `+0x20` à `+0x3c`.
+3. Appelle `FUN_004a5489`. Cette fonction compare les coordonnées de sommets stockées dans la structure et choisit quatre valeurs de type indice qu'elle écrit aux offsets `+0x1c`–`+0x1f`.
+4. Écrit un champ additionnel à `+0x19`, calculé à partir d'un paramètre multiplié par 64 et du signe d'un autre paramètre.
 
-Interprétation : l'arithmétique rectangulaire est observée directement. Comme run #20 montre que le caller sélectionne ce helper dans une branche normale d'un chemin lié au type d'obstruction et lui transmet des coordonnées/dimensions apparentes, il est raisonnable de soupçonner une construction d'empreinte ou de géométrie d'obstruction. Il faut cependant éviter de présenter la fonction comme « le collisionneur d'unités » sans preuve supplémentaire : elle est également appelée depuis deux autres procédures et son dossier ne contient pas de chaînes métier.
+Interprétation prudente : l'arithmétique de `FUN_004a5558` s'écarte du rectangle axis-aligned de `FUN_00483d4c` (run #21) et paraît construire quatre points orientés ou un quadrilatère à partir de composantes directionnelles. Dans `FUN_004839bb` (run #20), cette fonction est choisie par une condition de propriété/flag au lieu de `FUN_00483d4c`. La chaîne de preuves combinées suggère un format géométrique avec plusieurs modes dans un chemin lié aux obstructions, sans identifier de façon définitive le type d'objet ou prouver un algorithme de pathfinding.
+
+Limite importante : plusieurs fonctions décompilées par Ghidra ont des plages corporelles non contiguës. Pour `FUN_004a5558`, la taille totale est 265 octets alors que l'étendue d'adresses couvre 80 534 octets. Ne pas considérer automatiquement l'ensemble des blocs distants comme un corps linéaire sans vérifier le graphe de flux et les instructions.
 
 ## 5. Prochaine étape conseillée
 
-**Priorité immédiate : analyser le helper alternatif `0x4a5558`.**
+**Priorité immédiate : analyser `0x483a6a`.**
 
-Dans la prochaine exécution du workflow, utiliser :
+Dans le workflow manuel, utiliser :
 
 - `target_path=retro/exe et dll/age3y.exe`
-- `function_selector=0x4a5558`
+- `function_selector=0x483a6a`
 - `search_query` vide
 - `xref_address` vide
 
-Pourquoi cette cible : `FUN_004a5558` est la branche alternative appelée par `FUN_004839bb` selon un test de propriété/flag, là où le chemin normal appelle `FUN_00483d4c`. Le dernier run a confirmé que `FUN_00483d4c` écrit les quatre coins d'une forme rectangulaire et des champs indicateurs. Comparer les deux helpers peut révéler si le chemin alternatif construit une empreinte différente ou ajoute un autre traitement.
+Pourquoi cette cible : `FUN_004839bb` (run #20) appelle `FUN_00483d4c` ou `FUN_004a5558` pour produire des coordonnées géométriques, puis appelle `FUN_00483a6a` avant `FUN_0048380f`, qui semble mettre à jour l'appartenance à une grille spatiale. Le rôle de `FUN_00483a6a` peut aider à relier la forme géométrique aux indices/champs de la structure et à sa mise à jour spatiale.
 
-Puis, examiner `0x483a6a`, également appelé après la branche géométrique, si son rôle reste inconnu. Ensuite, si la piste d'occupation spatiale se confirme, lancer des recherches ciblées de xrefs autour de `kbCanPath2` (`0xc19dc0`) et `kbCanSimPath` (`0xc19e68`) pour séparer calcul géométrique et véritable pathfinding.
+Ensuite, prioriser les véritables interfaces de pathfinding : retrouver les références de code vers les descriptions `kbCanPath2` (`0xc19dc0`) et `kbCanSimPath` (`0xc19e68`) via `xref_address`, puis analyser seulement les adresses de fonctions confirmées. Maintenir le mouvement, l'économie et l'IA comme pistes séparées au lieu d'assimiler la construction géométrique au pathfinding.
 
-Continuer à noter le run, l'input, le binaire/hash, les adresses et extraits qui fondent l'interprétation, ainsi que les inconnues. Les fonctions `FUN_...` sont des noms synthétiques de Ghidra ; ne pas traiter le pseudocode comme la source originale.
+Documenter pour chaque run l'input exact, le hash du binaire, les preuves observées et les incertitudes. Les noms `FUN_...` sont des noms attribués par Ghidra ; le pseudocode n'est pas le code source original.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -103,4 +107,4 @@ Continuer à noter le run, l'input, le binaire/hash, les adresses et extraits qu
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Le run #21 a réussi avec `function_selector=0x483d4c`. `FUN_00483d4c` écrit les quatre coins d'un rectangle à partir de deux coordonnées et de deux dimensions, plus des champs indicateurs. Dans le contexte du run #20 (`FUN_004839bb`), cela suggère une géométrie/empreinte liée aux obstructions, mais le rôle exact des champs reste inconnu et la routine est aussi appelée depuis deux autres fonctions. Le run #20 montrait également un helper qui met à jour une grille spatiale ; la preuve combinée suggère des traitements d'obstruction/occupation de carte mais pas encore le pathfinding. Prochaine cible : `function_selector=0x4a5558`, l'autre branche de `FUN_004839bb`, puis `0x483a6a`. Prioriser unités/obstacles, grille spatiale, déplacement/pathfinding, simulation, économie et IA. Séparer faits et hypothèses, garder les liens run/artifact et créer une branche + PR pour toute modification.
+> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. La PR #8 est fusionnée. Le run #22 a réussi avec `function_selector=0x4a5558`. Cette fonction calcule quatre paires de coordonnées à partir de plusieurs paramètres flottants, puis appelle `FUN_004a5489` qui choisit des indices/champs de sommets. Comparée à la forme axis-aligned construite par `FUN_00483d4c` au run #21, elle semble traiter une forme orientée ou un quadrilatère. Avec `FUN_004839bb` et le helper de grille `FUN_0048380f` du run #20, cela étaye une piste géométrie/obstruction (confiance moyenne), sans prouver le pathfinding. Prochaine cible : `function_selector=0x483a6a`, puis xrefs vers `kbCanPath2` (`0xc19dc0`) et `kbCanSimPath` (`0xc19e68`). Prioriser unités/obstacles, grille spatiale, déplacement/pathfinding, simulation, économie et IA. Séparer faits et hypothèses, garder les liens run/artifact et créer une branche + PR pour toute modification.
