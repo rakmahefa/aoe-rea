@@ -2,7 +2,7 @@
 
 **Mise à jour : 13 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #26](https://github.com/rakmahefa/aoe-rea/actions/runs/38424403596)
+**Dernier run vérifié lors de la rédaction :** [REA binary analysis #27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077)
 
 ## 1. But du projet
 
@@ -56,39 +56,40 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219) | Xrefs vers `kbCanPath2` à `0xc19dc0` | Succès. `xrefs.json` donne une référence directe à `0x889735` (confidence observée). Le rapport n'indique pas encore le type de référence ni la procédure englobante : la prochaine étape est d'analyser `function_selector=0x889735`. |
 | [#25](https://github.com/rakmahefa/aoe-rea/actions/runs/38383598678) | `function_selector=0x889735` | Succès. L'adresse appartient à `FUN_00885d07`, routine d'enregistrement des APIs knowledge-base accessibles aux scripts. Le pseudocode enregistre `kbCanPath2` avec le callback `0x8827cc` et `kbCanSimPath` avec `0x88277e`, chacun avec 8 arguments. Ces callbacks sont les prochaines cibles ; leurs implémentations doivent encore être analysées. |
 | [#26](https://github.com/rakmahefa/aoe-rea/actions/runs/38424403596) | `function_selector=0x8827cc` | Échec dans l'analyse de fonction : REA renvoie `No procedure exists at the requested address: 0x8827cc`. `LAB_008827cc` est une étiquette de callback dans le pseudocode d'enregistrement, pas une entrée de procédure reconnue à cette adresse. Le workflow et Ghidra se préparent correctement ; il faut résoudre le contexte de cette étiquette avant de sélectionner une fonction. |
+| [#27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077) | Input répété : `function_selector=0x8827cc` | Même échec que #26. Les logs confirment que `FUNCTION_SELECTOR=0x8827cc` est encore fourni et que `xref_address` est vide ; le diagnostic xref demandé n'a donc pas eu lieu. La prochaine exécution doit mettre `0x8827cc` dans le champ `xref_address` et laisser `function_selector` vide. |
 
-### Dernier run en détail — #26
+### Dernier run en détail — #27
 
-Le [run #26](https://github.com/rakmahefa/aoe-rea/actions/runs/38424403596) s'est terminé en échec le 13 octobre 2026.
+Le [run #27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077) s'est terminé en échec le 13 octobre 2026.
 
-- Input effectif : `function_selector=0x8827cc` ; `search_query` et `xref_address` vides.
-- Artifact : `rea-analysis` (run ID `38424403596`, artifact ID `11829135145`).
+- Input réellement utilisé : `function_selector=0x8827cc`; `search_query` et `xref_address` étaient vides.
+- Artifact : `rea-analysis` (run ID `38433174077`, artifact ID `11832516485`).
 - Binaire : `retro/exe et dll/age3y.exe`.
 - SHA-256 : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Commit analysé : `1bc90c969386fa8d1771685a07a9e4baa63987a2`.
+- Commit analysé : `d8a134911c04bb51cd3f3369563ccedd9ad96a06`.
 - REA `6.4.0`, Ghidra `12.1.4`.
-- Le job a réussi l'installation et les contrôles de disponibilité de Ghidra, puis échoué à l'étape `Analyze selected binary`.
-- Dans `function.json`, REA renvoie le JSON d'erreur : `code=invalid_request`, `category=invalid_input`, `operation=analyze_function`, motif `invalid_value`, message `No procedure exists at the requested address: 0x8827cc`.
-- `function-selection.json` reste à l'état `pending`, car la commande d'analyse s'est arrêtée avant la finalisation de la sélection.
+- Installation et contrôle de disponibilité Ghidra : réussis. Étape `Analyze selected binary` : échec.
+- `function-selection.json` indique `selector=0x8827cc`, `source=manual input`, `status=pending`.
+- `function.json` renvoie `code=invalid_request`, `category=invalid_input`, `operation=analyze_function`, avec le message `No procedure exists at the requested address: 0x8827cc`.
 
-Diagnostic : run #25 donne une valeur de pointeur enregistrée sous l'étiquette `LAB_008827cc`, mais REA exige qu'un `function_selector` corresponde à une entrée de procédure reconnue. Ce run confirme que `0x8827cc` n'est pas une entrée de procédure reconnue dans l'état actuel du programme Ghidra/REA. Il ne dit pas encore si l'adresse est un bloc interne d'une autre fonction, du code non découpé comme fonction, ou si le pointeur cible une routine dont le début a été placé ailleurs. Il ne faut pas répéter la même sélection ni supposer que `0x88277e` fonctionnera.
+Ce run n'est pas un essai du champ xref. Le journal d'environnement montre explicitement `FUNCTION_SELECTOR: 0x8827cc`. Le champ `xref_address` vide signifie que l'étape `Inspect address cross-references` a été sautée. Le run #27 reproduit donc l'erreur du run #26 sans tester la piste diagnostique.
 
 ## 5. Prochaine étape conseillée
 
-**Résoudre le callback comme une adresse de code, pas comme une entrée de fonction.**
+**Relancer un xref-only en renseignant le bon champ.**
 
-Le run #26 a échoué parce que `0x8827cc` ne correspond pas à une entrée de procédure reconnue. Pour collecter plus de contexte, lancer un run xref-only avec :
+Dans **Actions → REA binary analysis → Run workflow**, configure exactement :
 
 - `target_path=retro/exe et dll/age3y.exe`
 - `xref_address=0x8827cc`
 - `function_selector` vide
 - `search_query` vide
 
-Ce run sert à vérifier les sites qui référencent l'étiquette du callback ; il n'est pas garanti qu'il révèle sa procédure englobante. Si la réponse ne donne que le site d'enregistrement déjà connu, il faudra étendre le workflow pour inspecter/désassembler une plage d'adresses ou résoudre la fonction contenant une adresse, plutôt que de passer ce label à la commande qui exige une entrée de fonction.
+Attention : les deux dernières tentatives ont saisi `0x8827cc` dans `function_selector`; ne répète pas ce réglage. Le workflow a alors cherché une entrée de fonction que Ghidra ne reconnaît pas. L'objectif du prochain run est au contraire de rechercher les références à cette adresse de callback. Ce test n'est pas garanti de trouver le corps réel, mais il est nécessaire avant de modifier le workflow.
 
-Ne pas tester `function_selector=0x88277e` avant d'avoir une preuve que c'est une entrée de procédure : ce deuxième callback est également présenté par Ghidra comme une étiquette `LAB_...`. La correspondance de l'enregistrement établit l'API de script, mais son implémentation native reste non résolue.
+Si le résultat ne montre que la référence depuis la routine d'enregistrement `FUN_00885d07`, il faudra ajouter une capacité au workflow/REA pour désassembler une plage de code ou résoudre la procédure contenant une adresse interne/étiquette. N'essaie pas encore `function_selector=0x88277e` : l'adresse de l'autre callback est elle aussi une étiquette `LAB_...` et n'a pas été confirmée comme entrée de procédure.
 
-La piste de géométrie/obstruction/occupation spatiale des runs #20–23 demeure séparée. Maintenir les conclusions distinctes, conserver les erreurs et limites de Ghidra, et n'affirmer aucun algorithme de pathfinding tant que le vrai corps de code n'est pas récupéré.
+Les runs #20–23 documentent séparément la piste géométrie/obstruction/occupation spatiale. Ne pas conclure au pathfinding natif avant de comprendre les callbacks. Préserver les preuves, les erreurs exactes et les limites de segmentation Ghidra.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -102,4 +103,4 @@ La piste de géométrie/obstruction/occupation spatiale des runs #20–23 demeur
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #9 est fusionnée. La PR #10 documente les callbacks de pathfinding mais doit être mise à jour après le run #26. Le run #25 a réussi avec `function_selector=0x889735` et résolu `FUN_00885d07`, routine d'enregistrement d'APIs script qui relie `kbCanPath2` à `LAB_008827cc` et `kbCanSimPath` à `LAB_0088277e`. Le run #26 a échoué sur `function_selector=0x8827cc` : REA dit `No procedure exists at the requested address`. Ces `LAB_...` sont des étiquettes, pas encore des entrées de fonction confirmées. Ne pas fusionner les docs avant d'inclure cette correction. Nouvelle tentative diagnostique : `xref_address=0x8827cc`, sans `function_selector`; si cela ne donne pas assez de contexte, faire évoluer le workflow pour inspecter une adresse de code/résoudre sa fonction englobante. Les runs #20–23 étayent une piste distincte de géométrie/obstruction/occupation spatiale. Conserver les faits, hypothèses et limites séparés, avec liens run/artifact et une branche/PR pour chaque modification.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #10 est fusionnée. Run #25 a montré que `kbCanPath2` est enregistré avec l'étiquette callback `LAB_008827cc` et `kbCanSimPath` avec `LAB_0088277e`. Runs #26 et #27 ont tous deux échoué parce que l'input était `function_selector=0x8827cc`, et non parce que Ghidra était indisponible : REA dit `No procedure exists at the requested address: 0x8827cc`. Dans le run #27, `xref_address` était encore vide, donc le diagnostic attendu n'a pas eu lieu. Prochaine exécution : mettre `xref_address=0x8827cc`, laisser `function_selector` et `search_query` vides. Si le xref ne suffit pas, il faudra améliorer le workflow pour inspecter une adresse de code/résoudre une procédure contenant une étiquette. Les runs #20–23 étayent une piste distincte de géométrie/obstruction/occupation. Séparer faits, hypothèses et limites, garder les liens run/artifact et créer une branche + PR pour les changements.
