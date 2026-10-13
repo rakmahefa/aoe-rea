@@ -56,20 +56,17 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 
 When `search_query` or `xref_address` is set without `function_selector`, the workflow skips the default PE entry-point/function pass so focused exploration does not waste time on likely CRT startup code. The workflow is read-only and performs static analysis only: it does not reconstruct source automatically or build a native Linux executable. Search matches and cross-references are leads, not proof of gameplay semantics.
 
-## Current investigation status (2026-10-12)
+## Current investigation status (2026-10-13)
 
-The latest verified Actions run is [REA binary analysis #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057), which ran a literal, case-insensitive string search for `unit` in `retro/exe et dll/age3y.exe`. The artifact contains 1,307 matching defined strings in `search.json`; the function-analysis step was intentionally skipped, so this run did not recover function pseudocode.
+The latest verified analysis is [REA binary analysis #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085). It ran REA's cross-reference query against the string address `0xc36e20` in `retro/exe et dll/age3y.exe`.
 
-High-value leads from that string inventory include:
+The result in `xrefs.json` is a single direct reference address: `0x6a15ca`. This is a **reference site**, not yet a confirmed function entry or a gameplay implementation. The xrefs operation reports address references without their kinds; the next step is to select the function containing this address using `function_selector=0x6a15ca`, then inspect its pseudocode, instructions, callers and callees.
 
-- `0xc36e20`: `Unit %d (%S) has a non-unit obstruction type %d`; nearby `0xc36e8c` is the source-path string `.\unit.cpp`. This is a promising native unit-system clue, but its callers/references must be inspected before assigning behavior.
-- `0xc19dc0` and `0xc19e68`: descriptions for `kbCanPath2` and `kbCanSimPath`, which are path feasibility queries exposed to the knowledge-base/AI layer.
-- `0xc1b0c8`, `0xc17d40`, and `0xc17dd8`: descriptions for `kbUnitCount`, `kbUnitCostPerResource`, and `kbCanAffordUnit`, offering leads toward unit state and economy.
-- `0xbaee38` and `0xc30d30`: script-facing descriptions for `hcUnitMoveToPos` and `trUnitMoveToPoint`, useful leads for movement command flow.
+The address `0xc36e20` holds the diagnostic string `Unit %d (%S) has a non-unit obstruction type %d`; the nearby `0xc36e8c` holds the source-path string `.\\unit.cpp`. This is a promising native unit-system lead, but the code behavior remains unclassified until the referencing function is inspected.
 
-These addresses are addresses of matched strings, not evidence that executable code begins there. Several hits are script API documentation or UI/resource names. The next step is cross-reference analysis—start with `xref_address=0xc36e20` to trace the native unit diagnostic, then `xref_address=0xc19dc0` for the pathfinding query—and only then decompile a code address supported by the xref results.
+Run #18's `unit` search also identified leads toward pathfinding (`kbCanPath2` at `0xc19dc0`, `kbCanSimPath` at `0xc19e68`), unit counts (`kbUnitCount` at `0xc1b0c8`), economy (`kbUnitCostPerResource` at `0xc17d40`, `kbCanAffordUnit` at `0xc17dd8`), and movement commands (`hcUnitMoveToPos` at `0xbaee38`, `trUnitMoveToPoint` at `0xc30d30`). These are string addresses and API descriptions, not confirmed native function entries.
 
-The earlier runs #12–#14 remain a verified particle-definition loading path (`0x555e86` → `0x555c89` → `0x5562ad`, with `Particle`, `filename`, and `timeoff`). That subsystem is not the priority unless a later cross-reference links it to gameplay.
+The earlier runs #12–#14 established a separate particle-definition loading path (`0x555e86` → `0x555c89` → `0x5562ad`, with `Particle`, `filename`, and `timeoff`). It is not the current priority unless later evidence links it to gameplay.
 
 See [the French session handoff](docs/SESSION_HANDOFF.md) for the run history, target identity, evidence, confidence and next workflow inputs. No original source or native Linux executable has been recovered or built.
 
