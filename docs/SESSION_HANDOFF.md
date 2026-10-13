@@ -2,7 +2,7 @@
 
 **Mise à jour : 13 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085)
+**Dernier run vérifié lors de la rédaction :** [REA binary analysis #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501)
 
 ## 1. But du projet
 
@@ -49,42 +49,45 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#14](https://github.com/rakmahefa/aoe-rea/actions/runs/38249737918) | `0x5562ad` | Parcourt des enfants XML `Particle`, lit notamment `filename` et `timeoff`, construit ou remplit une structure et délègue à `0x598def`. Chaîne de chargement de définitions de particules confirmée ; toujours pas de preuve du moteur de simulation. |
 | [#18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057) | Recherche de chaînes `unit` | Succès. `search.json` contient 1 307 chaînes définies correspondantes. Pistes : `kbCanPath2` (`0xc19dc0`), `kbCanSimPath` (`0xc19e68`), `kbUnitCount` (`0xc1b0c8`), `hcUnitMoveToPos` (`0xbaee38`) et diagnostic `Unit ... non-unit obstruction` (`0xc36e20`). Ce sont des adresses de chaînes, pas de code ; aucun pseudocode gameplay n'a été récupéré par ce run de recherche seule. |
 | [#19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) | Xrefs de `0xc36e20` | Succès. `xrefs.json` retourne une référence directe à `0x6a15ca`. Cette adresse est le site d'une référence ; la fonction qui la contient et son rôle gameplay restent à inspecter. |
+| [#20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501) | Fonction contenant `0x6a15ca` | Succès. REA résout `FUN_004839bb` (entrée `0x4839bb`). Le pseudocode vérifie un type d'obstruction, puis appelle des helpers de géométrie et de mise à jour spatiale. Piste de gestion d'obstruction/grille spatiale, confiance moyenne, avec limites liées aux plages de fonction non contiguës. |
 
-### Dernier run en détail — #19
+### Dernier run en détail — #20
 
-Le [run #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) s'est terminé avec succès le 13 octobre 2026.
+Le [run #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501) s'est terminé avec succès le 13 octobre 2026.
 
-- Input effectif : `xref_address=0xc36e20`.
+- Input effectif : `function_selector=0x6a15ca` ; recherche et xrefs vides.
 - Binaire : `retro/exe et dll/age3y.exe`.
 - SHA-256 : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
 - Commit analysé : `97a2e081d5cbf72c161756dba16599cf80fb61f8`.
 - REA `6.4.0`, Ghidra `12.1.4`.
-- L'artifact `rea-analysis` contient `metadata.json` et `xrefs.json`. Les étapes de recherche de chaînes et d'analyse générale/fonction ont été ignorées ; l'étape `Inspect address cross-references` a réussi.
-- `xrefs.json` indique le sujet `age3y.exe`, type PE/x86, l'opération `xrefs`, le paramètre `0xc36e20` et une seule référence directe : `0x6a15ca`. Le résultat est marqué `confidence: observed`.
+- `function-selection.json` indique `selector: 0x6a15ca`, `source: manual input`, `status: success`.
+- La procédure sélectionnée est `FUN_004839bb`, entrée `0x4839bb`, avec 9 appelants et 7 callees répertoriés.
+- Son corps contient trois plages non contiguës : `0x4839bb–0x483a69`, `0x4b8f9e–0x4b8fc8`, et `0x6a1598–0x6a15e8`. La plage de la référence qui pousse l'adresse de chaîne est la dernière (`0x6a15ca`). Le fait que Ghidra regroupe ces blocs distants reste une limite de segmentation à garder à l'esprit.
 
-Le rapport précise que la liste directe des adresses ne donne pas le type des références. Il faut donc traiter `0x6a15ca` comme **l'adresse du site de référence**, et non supposer qu'elle constitue l'entrée de la fonction.
+Pseudocode de `FUN_004839bb`, résumé de l'observation :
+1. Retourne faux si le paramètre ou le pointeur à `this+0x90` est nul.
+2. Lit le champ à l'offset `0x18` de l'objet associé. Si sa valeur n'est pas `1`, appelle les utilitaires de journalisation/chaîne, émet le diagnostic d'obstruction d'unité et retourne faux.
+3. Dans le chemin normal, inspecte un seuil à l'offset `0x54` et un bit dans une table de propriétés à partir de `this+0x5c`. Selon ce test, appelle `FUN_00483d4c` ou `FUN_004a5558`, en transmettant l'objet associé, des valeurs de coordonnées et des dimensions.
+4. Appelle `FUN_00483a6a`, passe sa valeur de retour ainsi que l'objet associé à `FUN_0048380f`, puis retourne le résultat de ce dernier.
+
+Le dossier séparé de `FUN_0048380f` récupéré dans `callees/48380f_FUN_0048380f.json` arrondit quatre bornes flottantes, les limite aux dimensions de la grille, calcule une cellule spatiale, vérifie si l'entrée a changé de cellule, retire l'ancien rattachement le cas échéant puis appelle un helper d'insertion et actualise les coordonnées/index stockés. C'est une preuve convergente d'une structure spatiale ou d'un registre d'occupation. Les noms `FUN_...` restent synthétiques et aucune étiquette officielle du moteur n'a été établie.
 
 ## 5. Prochaine étape conseillée
 
-**Priorité immédiate : inspecter la fonction contenant la référence `0x6a15ca`.**
+**Priorité immédiate : analyser le helper `0x483d4c`.**
 
-Relancer le workflow manuel avec les paramètres suivants :
+Dans la prochaine exécution du workflow, utiliser :
 
 - `target_path=retro/exe et dll/age3y.exe`
-- `function_selector=0x6a15ca`
+- `function_selector=0x483d4c`
 - `search_query` vide
 - `xref_address` vide
 
-REA accepte une adresse située à l'intérieur d'une procédure pour sélectionner la fonction qui la contient. L'artifact attendu doit donc inclure `function.json`, et normalement les dossiers de callees si la résolution de fonction réussit. Vérifier le statut explicite de `function-selection.json`, lire pseudocode et instructions, puis relever les appels entrants/sortants et les chaînes citées. Si la sélection n'est pas résolue, utiliser l'erreur réelle et l'inventaire des procédures pour obtenir une entrée de fonction exacte au lieu de deviner une autre adresse.
+Pourquoi cette cible : `FUN_00483d4c` est appelée sur le chemin normal de `FUN_004839bb`, avec l'objet d'obstruction et des coordonnées/dimensions apparentes. Son dossier devrait aider à dire si elle calcule, applique ou parcourt une empreinte spatiale. Examiner son pseudocode, ses instructions, ses références, ses appelants et les callees, sans attribuer de noms métiers non confirmés.
 
-Questions à trancher :
-1. La fonction qui référence le diagnostic appartient-elle au code d'entité/unité, à une vérification d'obstruction/collision, ou à une couche de journalisation ?
-2. Est-ce que ses appels ou ses données mènent à des routines de déplacement, de navigation, de recherche de chemin ou de simulation ?
-3. Peut-on identifier un appelant/callee plausible qui justifie une analyse de fonction dédiée ?
+Ensuite, analyser `0x4a5558` pour comprendre le chemin alternatif sélectionné par le test de propriété/flag, puis `0x483a6a` si son rôle reste flou. Si les résultats conduisent vers le calcul d'obstacles ou la mise à jour d'occupation de carte, cette famille de fonctions devient notre première piste native corroborée autour des unités et de la grille spatiale. Le pathfinding proprement dit reste à explorer à part via `kbCanPath2` (`0xc19dc0`) et `kbCanSimPath` (`0xc19e68`).
 
-Après cela, revenir à `0xc19dc0` (`kbCanPath2`) via `xref_address` pour comparer la piste pathfinding. Un xref vers une chaîne d'API peut passer par une table de registration ou de scripts ; il ne faut pas supposer qu'il pointe directement vers l'implémentation native.
-
-Documenter chaque résultat avec run/artifact, adresse exacte, extrait de preuve, interprétation, confiance et inconnues. Ne pas assimiler les adresses de chaînes aux fonctions et ne pas présenter le pseudocode Ghidra comme code source original.
+Documenter à chaque fois le run, le sélecteur, les adresses, les extraits de preuve, le niveau de confiance et les limites de segmentation Ghidra. Ne pas traiter du pseudocode décompilé comme du code source original.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -98,4 +101,4 @@ Documenter chaque résultat avec run/artifact, adresse exacte, extrait de preuve
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Lis `README.md` et `docs/SESSION_HANDOFF.md`, puis vérifie le dernier run GitHub Actions. Le run #19 a réussi `xref_address=0xc36e20` et retourné une seule référence directe, `0x6a15ca`, dans `xrefs.json`. Ce n'est que le site de référence, pas une fonction classifiée. La prochaine étape est de relancer REA avec `function_selector=0x6a15ca`, puis inspecter `function.json`, pseudocode, appels et callees. Priorise unités/entités, déplacement/pathfinding, simulation, économie et IA. Sépare les faits des hypothèses, conserve les références au run/artifact, et crée une branche + PR pour toute modification du dépôt.
+> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Le run #20 a réussi `function_selector=0x6a15ca` et a résolu `FUN_004839bb` (entrée `0x4839bb`). Son pseudocode vérifie le type d'obstruction d'un objet d'unité, puis appelle `FUN_00483d4c` ou `FUN_004a5558`, `FUN_00483a6a` et `FUN_0048380f`. Ce dernier helper recalcule une cellule spatiale à partir de bornes, retire/réinsère l'objet si elle change ; cela suggère une gestion d'obstruction/grille, confiance moyenne. Attention : Ghidra regroupe trois plages non contiguës dans la fonction. Prochaine cible : relancer avec `function_selector=0x483d4c`, puis examiner les résultats réels. Prioriser unités/obstacles, grille spatiale, déplacement/pathfinding, simulation, économie et IA. Séparer faits et hypothèses, garder les liens run/artifact et créer une branche + PR pour toute modification.
