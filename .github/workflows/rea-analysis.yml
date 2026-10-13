@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: ""
+      instruction_address:
+        description: Optional exact code address at which to inspect one native instruction (for example 0x8827cc)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -166,7 +171,7 @@ jobs:
           jq -e . "$REPORT_DIR/doctor.json" > /dev/null
 
       - name: Prepare metadata for focused queries
-        if: ${{ inputs.search_query != '' || inputs.xref_address != '' }}
+        if: ${{ inputs.search_query != '' || inputs.xref_address != '' || inputs.instruction_address != '' }}
         shell: bash
         env:
           TARGET_PATH: ${{ steps.target.outputs.path }}
@@ -188,11 +193,11 @@ jobs:
               rea_version: $rea_version,
               ghidra_version: $ghidra_version,
               analysed_at_utc: $analysed_at,
-              purpose: "Static native search/cross-reference analysis; not a Linux port or recompilation."
+              purpose: "Static native search/cross-reference/instruction analysis; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
       - name: Analyze selected binary
-        if: ${{ (inputs.search_query == '' && inputs.xref_address == '') || inputs.function_selector != '' }}
+        if: ${{ (inputs.search_query == '' && inputs.xref_address == '' && inputs.instruction_address == '') || inputs.function_selector != '' }}
         shell: bash
         env:
           TARGET_PATH: ${{ steps.target.outputs.path }}
@@ -420,6 +425,27 @@ jobs:
             2> "$REPORT_DIR/xrefs.stderr.log"
           jq -e . "$REPORT_DIR/xrefs.json" > /dev/null
           printf '%s\n' "- Cross-references for `$XREF_ADDRESS`: see `xrefs.json`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Inspect native instruction address
+        if: ${{ inputs.instruction_address != '' }}
+        shell: bash
+        env:
+          TARGET_PATH: ${{ steps.target.outputs.path }}
+          TARGET_RELATIVE_PATH: ${{ steps.target.outputs.relative_path }}
+          INSTRUCTION_ADDRESS: ${{ inputs.instruction_address }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$INSTRUCTION_ADDRESS" =~ ^0[xX][0-9a-fA-F]{1,8}$ ]]; then
+            echo "::error::instruction_address must be a PE32 virtual address such as 0x8827cc."
+            exit 1
+          fi
+
+          rea inspect-native-instruction "$TARGET_PATH" "$INSTRUCTION_ADDRESS" --provider ghidra --json \
+            > "$REPORT_DIR/instruction.json" \
+            2> "$REPORT_DIR/instruction.stderr.log"
+          jq -e . "$REPORT_DIR/instruction.json" > /dev/null
+          printf '%s\\n' "- Native instruction at `$INSTRUCTION_ADDRESS`: see `instruction.json`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
         if: always()
