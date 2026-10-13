@@ -1,8 +1,8 @@
 # Passation de session — projet aoe-rea
 
-**Mise à jour : 12 octobre 2026**  
+**Mise à jour : 13 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057)
+**Dernier run vérifié lors de la rédaction :** [REA binary analysis #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085)
 
 ## 1. But du projet
 
@@ -48,47 +48,43 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#13](https://github.com/rakmahefa/aoe-rea/actions/runs/38205614725) | `0x555e86` | Parcourt `particleSetXMLFiles`, les éléments `psetsfile` et leurs attributs `filename`, puis délègue à `0x555c89`. Cette dernière lit `ParticleSetDef` / `ParticleSet` et appelle `0x5562ad`. |
 | [#14](https://github.com/rakmahefa/aoe-rea/actions/runs/38249737918) | `0x5562ad` | Parcourt des enfants XML `Particle`, lit notamment `filename` et `timeoff`, construit ou remplit une structure et délègue à `0x598def`. Chaîne de chargement de définitions de particules confirmée ; toujours pas de preuve du moteur de simulation. |
 | [#18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057) | Recherche de chaînes `unit` | Succès. `search.json` contient 1 307 chaînes définies correspondantes. Pistes : `kbCanPath2` (`0xc19dc0`), `kbCanSimPath` (`0xc19e68`), `kbUnitCount` (`0xc1b0c8`), `hcUnitMoveToPos` (`0xbaee38`) et diagnostic `Unit ... non-unit obstruction` (`0xc36e20`). Ce sont des adresses de chaînes, pas de code ; aucun pseudocode gameplay n'a été récupéré par ce run de recherche seule. |
+| [#19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) | Xrefs de `0xc36e20` | Succès. `xrefs.json` retourne une référence directe à `0x6a15ca`. Cette adresse est le site d'une référence ; la fonction qui la contient et son rôle gameplay restent à inspecter. |
 
-### Dernier run en détail — #18
+### Dernier run en détail — #19
 
-Le [run #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057) s'est terminé avec succès le 12 octobre 2026.
+Le [run #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) s'est terminé avec succès le 13 octobre 2026.
 
-- Input effectif : recherche littérale `unit`, insensible à la casse.
+- Input effectif : `xref_address=0xc36e20`.
 - Binaire : `retro/exe et dll/age3y.exe`.
 - SHA-256 : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Source commit : `47601a91f5a5cf1ff38b34e56fd2245ada0c9801`.
+- Commit analysé : `97a2e081d5cbf72c161756dba16599cf80fb61f8`.
 - REA `6.4.0`, Ghidra `12.1.4`.
-- L'artifact contient `search.json` et `metadata.json` ; l'étape d'analyse de fonction a été ignorée conformément au mode de recherche seule.
+- L'artifact `rea-analysis` contient `metadata.json` et `xrefs.json`. Les étapes de recherche de chaînes et d'analyse générale/fonction ont été ignorées ; l'étape `Inspect address cross-references` a réussi.
+- `xrefs.json` indique le sujet `age3y.exe`, type PE/x86, l'opération `xrefs`, le paramètre `0xc36e20` et une seule référence directe : `0x6a15ca`. Le résultat est marqué `confidence: observed`.
 
-Pistes intéressantes relevées dans `search.json` :
-
-| Adresse de chaîne | Valeur | Interprétation prudente |
-|---|---|---|
-| `0xc36e20` | `Unit %d (%S) has a non-unit obstruction type %d` | Message de diagnostic relatif à une obstruction d'unité ; candidat pour remonter au code du module unit. |
-| `0xc36e8c` | `.\unit.cpp` | Chemin de source intégré au binaire, proche du diagnostic précédent ; indice de provenance, pas source originale récupérée. |
-| `0xc19dc0` | Signature/documentation `kbCanPath2` | API de requête de pathfinding exposée à la couche knowledge-base/IA. |
-| `0xc19e68` | Signature/documentation `kbCanSimPath` | API de test de chemin de simulation ; l'implémentation n'est pas établie par la chaîne. |
-| `0xc1b0c8` | Signature/documentation `kbUnitCount` | API de comptage d'unités par joueur/type/état. |
-| `0xc17d40`, `0xc17dd8` | `kbUnitCostPerResource`, `kbCanAffordUnit` | Pistes d'économie/coût et capacité de paiement. |
-| `0xbaee38`, `0xc30d30` | `hcUnitMoveToPos`, `trUnitMoveToPoint` | Descriptions de commandes de déplacement accessibles aux scripts. |
-
-La requête a retourné 1 307 chaînes définies correspondantes. Ces adresses désignent les **données de chaînes**. Une partie des résultats provient d'aide de script, d'UI et de ressources. Aucune de ces chaînes ne prouve à elle seule l'algorithme ou la fonction native recherchée.
+Le rapport précise que la liste directe des adresses ne donne pas le type des références. Il faut donc traiter `0x6a15ca` comme **l'adresse du site de référence**, et non supposer qu'elle constitue l'entrée de la fonction.
 
 ## 5. Prochaine étape conseillée
 
-**Priorité : suivre les références croisées des données vers le code natif.**
+**Priorité immédiate : inspecter la fonction contenant la référence `0x6a15ca`.**
 
-La recherche #18 fournit deux premiers candidats à tester :
+Relancer le workflow manuel avec les paramètres suivants :
 
-1. **`0xc36e20`** — message de diagnostic dans le voisinage de `.\unit.cpp`. Lancer le workflow avec `xref_address=0xc36e20` pour identifier les fonctions qui référencent ce message.
-2. **`0xc19dc0`** — documentation de `kbCanPath2`. Lancer ensuite `xref_address=0xc19dc0` pour cartographier son enregistrement et ses usages éventuels.
-3. Après chaque run, inspecter `xrefs.json`. Distinguer les références provenant d'une table d'enregistrement, d'une aide/script, d'un appelant natif ou d'un simple accès aux données. Ne pas supposer que le premier xref est l'implémentation.
-4. Relancer avec `function_selector` sur une adresse que les xrefs et le contexte montrent comme fonction de code ; lire le pseudocode, l'assembly, les références et callees.
-5. Compléter ensuite par les signatures `kbCanSimPath`, `kbUnitCount`, `kbUnitCostPerResource`, `kbCanAffordUnit` et les commandes de déplacement si elles conduisent à un code gameplay corroboré.
+- `target_path=retro/exe et dll/age3y.exe`
+- `function_selector=0x6a15ca`
+- `search_query` vide
+- `xref_address` vide
 
-Le run #14 demeure une piste de chargement de particules séparée. Ne revenir à `0x555de7` que si une preuve nouvelle le relie à un système de gameplay prioritaire.
+REA accepte une adresse située à l'intérieur d'une procédure pour sélectionner la fonction qui la contient. L'artifact attendu doit donc inclure `function.json`, et normalement les dossiers de callees si la résolution de fonction réussit. Vérifier le statut explicite de `function-selection.json`, lire pseudocode et instructions, puis relever les appels entrants/sortants et les chaînes citées. Si la sélection n'est pas résolue, utiliser l'erreur réelle et l'inventaire des procédures pour obtenir une entrée de fonction exacte au lieu de deviner une autre adresse.
 
-Pour chaque résultat, noter l'adresse, le run/artifact, le contexte de l'xref, l'interprétation, le niveau de confiance et les inconnues. Les chaînes et les pseudocodes Ghidra sont des éléments de preuve à évaluer, pas le code source original.
+Questions à trancher :
+1. La fonction qui référence le diagnostic appartient-elle au code d'entité/unité, à une vérification d'obstruction/collision, ou à une couche de journalisation ?
+2. Est-ce que ses appels ou ses données mènent à des routines de déplacement, de navigation, de recherche de chemin ou de simulation ?
+3. Peut-on identifier un appelant/callee plausible qui justifie une analyse de fonction dédiée ?
+
+Après cela, revenir à `0xc19dc0` (`kbCanPath2`) via `xref_address` pour comparer la piste pathfinding. Un xref vers une chaîne d'API peut passer par une table de registration ou de scripts ; il ne faut pas supposer qu'il pointe directement vers l'implémentation native.
+
+Documenter chaque résultat avec run/artifact, adresse exacte, extrait de preuve, interprétation, confiance et inconnues. Ne pas assimiler les adresses de chaînes aux fonctions et ne pas présenter le pseudocode Ghidra comme code source original.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -102,4 +98,4 @@ Pour chaque résultat, noter l'adresse, le run/artifact, le contexte de l'xref, 
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Le but final est de reconstruire suffisamment le comportement d’Age of Empires III pour viser un vrai exécutable Linux natif ; aucun port natif ni source originale complète n'a été récupéré. Lis `README.md` et `docs/SESSION_HANDOFF.md`, vérifie le dernier run GitHub Actions, puis examine ses artifacts. Le run #18 a réussi une recherche littérale `unit` et trouvé 1 307 chaînes ; pistes : message unit `0xc36e20`, signature `kbCanPath2` `0xc19dc0`, `kbCanSimPath` `0xc19e68`, `kbUnitCount` `0xc1b0c8`, coûts d'unités et wrappers de déplacement. Ces adresses sont des chaînes, pas des fonctions. La prochaine étape est d'utiliser `xref_address` (PR à fusionner) pour inspecter les références croisées, puis `function_selector` sur une adresse de code corroborée. Utilise les outils GitHub connectés, analyse les résultats réels, sépare faits et hypothèses, priorise unités/entités, simulation, déplacement, économie et IA, et crée une branche + PR pour toute modification.
+> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Lis `README.md` et `docs/SESSION_HANDOFF.md`, puis vérifie le dernier run GitHub Actions. Le run #19 a réussi `xref_address=0xc36e20` et retourné une seule référence directe, `0x6a15ca`, dans `xrefs.json`. Ce n'est que le site de référence, pas une fonction classifiée. La prochaine étape est de relancer REA avec `function_selector=0x6a15ca`, puis inspecter `function.json`, pseudocode, appels et callees. Priorise unités/entités, déplacement/pathfinding, simulation, économie et IA. Sépare les faits des hypothèses, conserve les références au run/artifact, et crée une branche + PR pour toute modification du dépôt.
