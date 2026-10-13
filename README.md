@@ -58,38 +58,30 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #23](https://github.com/rakmahefa/aoe-rea/actions/runs/38363697748). It used `function_selector=0x483a6a`, the post-geometry helper called by `FUN_004839bb` in run #20.
+The latest verified analysis is [REA binary analysis #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219). It ran an xref query for the defined string `kbCanPath2` at `0xc19dc0`, a script-facing clue to pathfinding found in run #18.
 
-### Run #23 — post-geometry checks and status flags
+### Run #24 — xref for `kbCanPath2`
 
-REA resolved `FUN_00483a6a` as a non-external, non-thunk procedure. Its pseudocode calls several helpers, checks a property record and a floating-point field, then returns one of the small integer values `0` through `4`. On several paths it modifies a byte at offset `+0x1b` of the associated object, setting bit `0x01` or bit `0x04`.
+The workflow succeeded. `xrefs.json` returns one direct reference site, `0x889735`, with confidence `observed`. The report does not include the reference kind or a containing function dossier, so this is a **code-reference lead**, not yet confirmation that the containing procedure implements pathfinding.
 
-Observed control flow:
-- Calls an indirect-dispatch trampoline with a function pointer loaded from a vtable-like table at offset `+0xac`. If that result is false, returns `0`.
-- Calls `FUN_004883dd`. If false, returns `4`.
-- If the property/flag condition on the structure at `this+0x5c` permits further checks, calls two more indirect-dispatch trampolines associated with entries at offsets `+0x90` and `+0x98`.
-- Depending on those results, sets `associated_object+0x1b |= 0x01` and returns `1` or `2`; or sets `associated_object+0x1b |= 0x04` and returns `3`.
-- Some branches use addresses `0x483ee7`, `0x48ce21`, and `0x6a157e–0x6a1597`. Ghidra groups these into non-contiguous body ranges.
+- Query input: `xref_address=0xc19dc0`; `function_selector` and `search_query` blank.
+- Target: `retro/exe et dll/age3y.exe`; SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
+- Run ID `38373803219`; artifact ID `11800685934`; artifact `rea-analysis`.
+- Analyzed commit: `ad539edede393f8d954bea01266e8d31fb4121f5`; REA 6.4.0; Ghidra 12.1.4.
+- The run did not generate a function dossier because the workflow performed xref-only analysis.
 
-`FUN_004883dd` checks fields in the structure at `this+0x5c` and, on a fallback path, compares a float at `this+0x68+8` against approximately `1e-6`; it can call `FUN_006a0831`. This is observed validation/gating behavior, but neither its domain meaning nor the return-code meanings are established. Three short callees (`FUN_00483af4`, `FUN_00487ecc`, `FUN_004a5cb7`) are reported by Ghidra as unresolved computed/indirect dispatches, so their actual targets and semantics are not recovered in these dossiers.
+The next step is to run `function_selector=0x889735`. As in run #19, which used a string-reference instruction to find the containing function, REA should resolve the selected address to a procedure if Ghidra has identified one there. Inspect the pseudocode, assembly and callers to find whether the reference is inside a gameplay routine, a script/API registration table, or some other code. Do not infer the function's purpose from the string name alone. If this reference site doesn't resolve into a meaningful procedure, inspect the exact disassembly/cross-reference context and then try the separate `kbCanSimPath` clue at `0xc19e68`.
 
-Together with runs #20–22, the evidence suggests this function classifies or validates the result of a geometry/obstruction-related operation and records state bits. Do not assign game-level names to the return codes or flags without corroboration. It does not establish that this function performs pathfinding.
+### Geometry findings from runs #20–23
 
-### Geometry findings from runs #20–22
-
-- **Run #20**: `FUN_004839bb` checks an object’s obstruction-type field, chooses one of two geometry helpers, calls `FUN_00483a6a`, then calls `FUN_0048380f`. That final helper clamps four floating-point bounds to spatial-grid dimensions and updates cell membership; this gives medium-confidence evidence for spatial/occupancy bookkeeping.
+- **Run #20**: `FUN_004839bb` checks an object's obstruction-type field, chooses one of two geometry helpers, calls `FUN_00483a6a`, then calls `FUN_0048380f`. That final helper clamps four floating-point bounds to spatial-grid dimensions and updates cell membership; this gives medium-confidence evidence for spatial/occupancy bookkeeping.
 - **Run #21**: `FUN_00483d4c` computes four axis-aligned rectangle corners from two coordinate values and two extents, then writes byte fields into a structure.
 - **Run #22**: `FUN_004a5558` calculates four coordinate pairs using products/combinations of floating-point parameters and calls `FUN_004a5489`, which compares vertex coordinates and writes byte fields. Compared with #21, its arithmetic is consistent with an oriented quadrilateral/footprint, but the exact parameter and field meanings remain unknown.
+- **Run #23**: `FUN_00483a6a` runs conditional checks, returns a code between 0 and 4, and may set bits in the associated object's state byte at offset `+0x1b`. Several calls use unresolved indirect dispatches, so the meanings of the codes and bits remain unknown.
 
-Taken together, these runs provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. This remains an inference from control flow and arithmetic, not a fully named engine subsystem. Several involved procedures have non-contiguous Ghidra body ranges, and should be checked before treating those ranges as conventional function bodies.
+Taken together, runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. This is an inference from control flow and arithmetic, not a fully identified engine subsystem and not proof of the pathfinding algorithm. Several involved procedures have non-contiguous Ghidra body ranges and should be checked before treating every distant range as a conventional function body.
 
-### Reproducibility and next direction
-
-Run #23 used `retro/exe et dll/age3y.exe`, SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`, REA 6.4.0 and Ghidra 12.1.4. Artifact: `rea-analysis`, run ID `38363697748`, artifact ID `11797128628`; analyzed commit `ad539edede393f8d954bea01266e8d31fb4121f5`.
-
-The next priority is to move from geometry/occupancy to explicit pathfinding evidence. Run the workflow with `xref_address=0xc19dc0` (the defined-string address for `kbCanPath2`), leaving `function_selector` and `search_query` empty. Inspect the returned reference site; only then select a confirmed code function. Later repeat for `kbCanSimPath` at `0xc19e68`. The gameplay string search from run #18 also contains separate movement, unit-count and economy leads.
-
-Runs #12–#14 documented a particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
+Runs #12–14 documented a separate particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
