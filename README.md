@@ -56,22 +56,25 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 
 When `search_query` or `xref_address` is set without `function_selector`, the workflow skips the default PE entry-point/function pass so focused exploration does not waste time on likely CRT startup code. The workflow is read-only and performs static analysis only: it does not reconstruct source automatically or build a native Linux executable. Search matches and cross-references are leads, not proof of gameplay semantics.
 
-## Current investigation status (2026-10-12)
+## Current investigation status (2026-10-13)
 
-The latest verified Actions run is [REA binary analysis #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38264819057), which ran a literal, case-insensitive string search for `unit` in `retro/exe et dll/age3y.exe`. The artifact contains 1,307 matching defined strings in `search.json`; the function-analysis step was intentionally skipped, so this run did not recover function pseudocode.
+The latest verified analysis is [REA binary analysis #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849). It used `function_selector=0x483d4c`, the normal-branch geometry helper called by `FUN_004839bb` in run #20.
 
-High-value leads from that string inventory include:
+Run #21 successfully resolved `FUN_00483d4c` as a real, non-thunk Ghidra procedure. Its 89-byte body is one contiguous range (`0x483d4c–0x483da4`), unlike the unusually segmented body of its caller. The pseudocode writes four corner-coordinate pairs based on two input coordinates and two extents:
+- `(x-w, y-h)`
+- `(x-w, y+h)`
+- `(x+w, y+h)`
+- `(x+w, y-h)`
 
-- `0xc36e20`: `Unit %d (%S) has a non-unit obstruction type %d`; nearby `0xc36e8c` is the source-path string `.\unit.cpp`. This is a promising native unit-system clue, but its callers/references must be inspected before assigning behavior.
-- `0xc19dc0` and `0xc19e68`: descriptions for `kbCanPath2` and `kbCanSimPath`, which are path feasibility queries exposed to the knowledge-base/AI layer.
-- `0xc1b0c8`, `0xc17d40`, and `0xc17dd8`: descriptions for `kbUnitCount`, `kbUnitCostPerResource`, and `kbCanAffordUnit`, offering leads toward unit state and economy.
-- `0xbaee38` and `0xc30d30`: script-facing descriptions for `hcUnitMoveToPos` and `trUnitMoveToPoint`, useful leads for movement command flow.
+It also writes constant byte values at offsets `+0x19`, `+0x1c`–`+0x1f` in the supplied structure. The interpretation as a rectangle/footprint is supported directly by the arithmetic; the exact semantics of the byte fields are not known. In run #20's caller context, this helper is selected on the regular branch of an obstruction-related function and receives coordinate-like values and dimensions, so **rectangular obstruction geometry is a plausible interpretation**, not an established engine-level label.
 
-These addresses are addresses of matched strings, not evidence that executable code begins there. Several hits are script API documentation or UI/resource names. The next step is cross-reference analysis—start with `xref_address=0xc36e20` to trace the native unit diagnostic, then `xref_address=0xc19dc0` for the pathfinding query—and only then decompile a code address supported by the xref results.
+The helper has no outgoing calls and no referenced strings. Its incoming calls include `FUN_004839bb` (at `0x483a47`), plus `FUN_00497884` and `FUN_004e4a30`; it may therefore be a shared geometry routine rather than unit-specific code. Combined with `FUN_0048380f` from run #20, this improves the evidence for geometry/spatial-cell handling around units and obstacles, but it still does not demonstrate movement or pathfinding itself.
 
-The earlier runs #12–#14 remain a verified particle-definition loading path (`0x555e86` → `0x555c89` → `0x5562ad`, with `Particle`, `filename`, and `timeoff`). That subsystem is not the priority unless a later cross-reference links it to gameplay.
+Caveat: the input binary is the same fixed PE32 x86 file (`age3y.exe`, SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d)); REA 6.4.0 and Ghidra 12.1.4 were used. The parent `FUN_004839bb` still has three non-contiguous body ranges spanning over 2.2 MB, so treat its inferred body boundaries cautiously. The helper `FUN_00483d4c` itself does not have this segmentation issue.
 
-See [the French session handoff](docs/SESSION_HANDOFF.md) for the run history, target identity, evidence, confidence and next workflow inputs. No original source or native Linux executable has been recovered or built.
+The next focused target is `0x4a5558`, the alternative geometry branch called by `FUN_004839bb`. Comparing it with `0x483d4c` should show what the caller's property/flag test changes. Then inspect `0x483a6a` if its role remains unclear. In parallel, pathfinding leads from run #18 remain `kbCanPath2` (`0xc19dc0`) and `kbCanSimPath` (`0xc19e68`), with economy and movement script APIs as further searches.
+
+Runs #12–#14 established a separate particle-definition loading path; it remains a lower priority unless later evidence links it to gameplay. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
