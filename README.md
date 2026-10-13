@@ -58,23 +58,30 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849). It used `function_selector=0x483d4c`, the normal-branch geometry helper called by `FUN_004839bb` in run #20.
+The latest verified analysis is [REA binary analysis #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219). It ran an xref query for the defined string `kbCanPath2` at `0xc19dc0`, a script-facing clue to pathfinding found in run #18.
 
-Run #21 successfully resolved `FUN_00483d4c` as a real, non-thunk Ghidra procedure. Its 89-byte body is one contiguous range (`0x483d4c–0x483da4`), unlike the unusually segmented body of its caller. The pseudocode writes four corner-coordinate pairs based on two input coordinates and two extents:
-- `(x-w, y-h)`
-- `(x-w, y+h)`
-- `(x+w, y+h)`
-- `(x+w, y-h)`
+### Run #24 — xref for `kbCanPath2`
 
-It also writes constant byte values at offsets `+0x19`, `+0x1c`–`+0x1f` in the supplied structure. The interpretation as a rectangle/footprint is supported directly by the arithmetic; the exact semantics of the byte fields are not known. In run #20's caller context, this helper is selected on the regular branch of an obstruction-related function and receives coordinate-like values and dimensions, so **rectangular obstruction geometry is a plausible interpretation**, not an established engine-level label.
+The workflow succeeded. `xrefs.json` returns one direct reference site, `0x889735`, with confidence `observed`. The report does not include the reference kind or a containing function dossier, so this is a **code-reference lead**, not yet confirmation that the containing procedure implements pathfinding.
 
-The helper has no outgoing calls and no referenced strings. Its incoming calls include `FUN_004839bb` (at `0x483a47`), plus `FUN_00497884` and `FUN_004e4a30`; it may therefore be a shared geometry routine rather than unit-specific code. Combined with `FUN_0048380f` from run #20, this improves the evidence for geometry/spatial-cell handling around units and obstacles, but it still does not demonstrate movement or pathfinding itself.
+- Query input: `xref_address=0xc19dc0`; `function_selector` and `search_query` blank.
+- Target: `retro/exe et dll/age3y.exe`; SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
+- Run ID `38373803219`; artifact ID `11800685934`; artifact `rea-analysis`.
+- Analyzed commit: `ad539edede393f8d954bea01266e8d31fb4121f5`; REA 6.4.0; Ghidra 12.1.4.
+- The run did not generate a function dossier because the workflow performed xref-only analysis.
 
-Caveat: the input binary is the same fixed PE32 x86 file (`age3y.exe`, SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d)); REA 6.4.0 and Ghidra 12.1.4 were used. The parent `FUN_004839bb` still has three non-contiguous body ranges spanning over 2.2 MB, so treat its inferred body boundaries cautiously. The helper `FUN_00483d4c` itself does not have this segmentation issue.
+The next step is to run `function_selector=0x889735`. As in run #19, which used a string-reference instruction to find the containing function, REA should resolve the selected address to a procedure if Ghidra has identified one there. Inspect the pseudocode, assembly and callers to find whether the reference is inside a gameplay routine, a script/API registration table, or some other code. Do not infer the function's purpose from the string name alone. If this reference site doesn't resolve into a meaningful procedure, inspect the exact disassembly/cross-reference context and then try the separate `kbCanSimPath` clue at `0xc19e68`.
 
-The next focused target is `0x4a5558`, the alternative geometry branch called by `FUN_004839bb`. Comparing it with `0x483d4c` should show what the caller's property/flag test changes. Then inspect `0x483a6a` if its role remains unclear. In parallel, pathfinding leads from run #18 remain `kbCanPath2` (`0xc19dc0`) and `kbCanSimPath` (`0xc19e68`), with economy and movement script APIs as further searches.
+### Geometry findings from runs #20–23
 
-Runs #12–#14 established a separate particle-definition loading path; it remains a lower priority unless later evidence links it to gameplay. No original source or native Linux executable has been recovered or built.
+- **Run #20**: `FUN_004839bb` checks an object's obstruction-type field, chooses one of two geometry helpers, calls `FUN_00483a6a`, then calls `FUN_0048380f`. That final helper clamps four floating-point bounds to spatial-grid dimensions and updates cell membership; this gives medium-confidence evidence for spatial/occupancy bookkeeping.
+- **Run #21**: `FUN_00483d4c` computes four axis-aligned rectangle corners from two coordinate values and two extents, then writes byte fields into a structure.
+- **Run #22**: `FUN_004a5558` calculates four coordinate pairs using products/combinations of floating-point parameters and calls `FUN_004a5489`, which compares vertex coordinates and writes byte fields. Compared with #21, its arithmetic is consistent with an oriented quadrilateral/footprint, but the exact parameter and field meanings remain unknown.
+- **Run #23**: `FUN_00483a6a` runs conditional checks, returns a code between 0 and 4, and may set bits in the associated object's state byte at offset `+0x1b`. Several calls use unresolved indirect dispatches, so the meanings of the codes and bits remain unknown.
+
+Taken together, runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. This is an inference from control flow and arithmetic, not a fully identified engine subsystem and not proof of the pathfinding algorithm. Several involved procedures have non-contiguous Ghidra body ranges and should be checked before treating every distant range as a conventional function body.
+
+Runs #12–14 documented a separate particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 

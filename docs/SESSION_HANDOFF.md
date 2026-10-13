@@ -2,7 +2,7 @@
 
 **Mise à jour : 13 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849)
+**Dernier run vérifié lors de la rédaction :** [REA binary analysis #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219)
 
 ## 1. But du projet
 
@@ -14,7 +14,7 @@ Le projet vise à étudier Age of Empires III à l’aide de REA et Ghidra, puis
 
 - Dépôt GitHub : https://github.com/rakmahefa/aoe-rea
 - Branche principale : `main`
-- Commit `main` observé lors de cette mise à jour : `97a2e081d5cbf72c161756dba16599cf80fb61f8` (fusion de la PR #7). Vérifier de nouveau le commit avant de poursuivre.
+- Commit `main` observé lors de cette mise à jour : `ad539edede393f8d954bea01266e8d31fb4121f5` (fusion de la PR #8). Vérifier de nouveau le commit avant de poursuivre.
 - Workflow manuel : [REA binary analysis](https://github.com/rakmahefa/aoe-rea/actions/workflows/rea-analysis.yml)
 - Fichier analysé par défaut : `retro/exe et dll/age3y.exe`
 - SHA-256 du binaire : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`
@@ -51,45 +51,42 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#19](https://github.com/rakmahefa/aoe-rea/actions/runs/38343736085) | Xrefs de `0xc36e20` | Succès. `xrefs.json` retourne une référence directe à `0x6a15ca`. Cette adresse est le site d'une référence ; la fonction qui la contient et son rôle gameplay restent à inspecter. |
 | [#20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501) | Fonction contenant `0x6a15ca` | Succès. REA résout `FUN_004839bb` (entrée `0x4839bb`). Le pseudocode vérifie un type d'obstruction, puis appelle des helpers de géométrie et de mise à jour spatiale. Piste de gestion d'obstruction/grille spatiale, confiance moyenne, avec limites liées aux plages de fonction non contiguës. |
 | [#21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849) | `function_selector=0x483d4c` | Succès. `FUN_00483d4c` (89 octets contigus) calcule les quatre coins d’un rectangle à partir de deux coordonnées et de deux dimensions, puis écrit des champs indicateurs. Dans le contexte de #20, cela suggère une empreinte géométrique liée à l’obstruction ; les champs et le rôle exact restent à confirmer. Cette fonction est aussi appelée depuis deux autres procédures. |
+| [#22](https://github.com/rakmahefa/aoe-rea/actions/runs/38354872448) | `function_selector=0x4a5558` | Succès. `FUN_004a5558` calcule quatre paires de coordonnées à partir de plusieurs paramètres flottants, puis appelle `FUN_004a5489` pour choisir des indices/champs associés aux sommets. Cette branche semble produire une forme orientée plutôt qu’un simple rectangle aligné sur les axes ; interprétation géométrique plausible, sémantique exacte non confirmée. |
+| [#23](https://github.com/rakmahefa/aoe-rea/actions/runs/38363697748) | `function_selector=0x483a6a` | Succès. `FUN_00483a6a` effectue des contrôles conditionnels, renvoie un code entre 0 et 4 et définit des bits d’état sur un objet associé. Plusieurs contrôles passent par des dispatchs indirects non résolus ; les codes et bits n’ont donc pas encore de sémantique métier confirmée. Après cette étape, priorité à l’analyse des xrefs du texte `kbCanPath2` (`0xc19dc0`). |
+| [#24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219) | Xrefs vers `kbCanPath2` à `0xc19dc0` | Succès. `xrefs.json` donne une référence directe à `0x889735` (confidence observée). Le rapport n'indique pas encore le type de référence ni la procédure englobante : la prochaine étape est d'analyser `function_selector=0x889735`. |
 
-### Dernier run en détail — #21
+### Dernier run en détail — #24
 
-Le [run #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849) s'est terminé avec succès le 13 octobre 2026.
+Le [run #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219) s'est terminé avec succès le 13 octobre 2026.
 
-- Input effectif : `function_selector=0x483d4c` ; recherche et xrefs vides.
-- Artifact : `rea-analysis` (run ID `38350963849`, artifact ID `11791420795`).
+- Input effectif : `xref_address=0xc19dc0` ; `function_selector` et `search_query` vides.
+- Artifact : `rea-analysis` (run ID `38373803219`, artifact ID `11800685934`).
 - Binaire : `retro/exe et dll/age3y.exe`.
 - SHA-256 : `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Commit analysé : `97a2e081d5cbf72c161756dba16599cf80fb61f8`.
+- Commit analysé : `ad539edede393f8d954bea01266e8d31fb4121f5`.
 - REA `6.4.0`, Ghidra `12.1.4`.
-- `function-selection.json` indique `selector: 0x483d4c`, `source: manual input`, `status: success`.
-- La procédure sélectionnée est `FUN_00483d4c`, non externe et non thunk ; corps unique `0x483d4c–0x483da4`, 89 octets, sans plage non contiguë.
-- Il s'agit d'une fonction feuille : aucun callee ni chaîne référencée dans ce dossier.
-- Les références entrantes comprennent `FUN_004839bb` via l'appel à `0x483d4c` au site `0x483a47`, ainsi que les procédures `FUN_00497884` et `FUN_004e4a30`. Ce dernier point indique que la routine peut être partagée.
+- `xrefs.json` enregistre `parameters.address=0xc19dc0`, avec le seul résultat direct `0x889735`, `confidence=observed`.
+- Le run était xref-only : aucune analyse de procédure n'a été exécutée. Le rapport ne donne ni l'instruction de référence, ni le type de référence, ni le nom/entrée de la fonction contenante.
+- Les dossiers `doctor.json` indiquent que Ghidra était disponible et sain pour l'analyse statique ; certains moteurs facultatifs (Hopper, IDA) et l'identité du skill REA n'étaient pas configurés, sans empêcher ce run xref.
 
-Résumé du pseudocode :
-1. Lit l'objet de sortie reçu en premier argument.
-2. Calcule les bornes `x-w`, `y-h`, `x-w`, `y+h`, `x+w`, `y+h`, `x+w`, `y-h`, puis les écrit à partir des offsets `+0x20` à `+0x3c`. Ce sont les quatre coins d'un rectangle exprimés sous forme de quatre paires de coordonnées.
-3. Écrit aussi les octets `+0x1e=4`, `+0x1f=5`, `+0x1c=0`, `+0x1d=1`, et `+0x19=0x40`. Le sens exact de ces champs n'est pas établi.
-
-Interprétation : l'arithmétique rectangulaire est observée directement. Comme run #20 montre que le caller sélectionne ce helper dans une branche normale d'un chemin lié au type d'obstruction et lui transmet des coordonnées/dimensions apparentes, il est raisonnable de soupçonner une construction d'empreinte ou de géométrie d'obstruction. Il faut cependant éviter de présenter la fonction comme « le collisionneur d'unités » sans preuve supplémentaire : elle est également appelée depuis deux autres procédures et son dossier ne contient pas de chaînes métier.
+Interprétation : `kbCanPath2` est un nom de chaîne/documentation de l'interface de script et l'adresse `0xc19dc0` est une adresse de donnée. La référence `0x889735` semble être le site code à examiner. Il faut vérifier si elle est située dans une procédure gameplay, un enregistrement d'API/script, ou une autre forme d'initialisation. Rien dans le run #24 ne prouve encore que `0x889735` exécute l'algorithme de cheminement.
 
 ## 5. Prochaine étape conseillée
 
-**Priorité immédiate : analyser le helper alternatif `0x4a5558`.**
+**Analyser la procédure contenant le site de référence `0x889735`.**
 
-Dans la prochaine exécution du workflow, utiliser :
+Lancer le workflow avec :
 
 - `target_path=retro/exe et dll/age3y.exe`
-- `function_selector=0x4a5558`
+- `function_selector=0x889735`
 - `search_query` vide
 - `xref_address` vide
 
-Pourquoi cette cible : `FUN_004a5558` est la branche alternative appelée par `FUN_004839bb` selon un test de propriété/flag, là où le chemin normal appelle `FUN_00483d4c`. Le dernier run a confirmé que `FUN_00483d4c` écrit les quatre coins d'une forme rectangulaire et des champs indicateurs. Comparer les deux helpers peut révéler si le chemin alternatif construit une empreinte différente ou ajoute un autre traitement.
+Pourquoi : le run #24 a cherché les références de la chaîne `kbCanPath2` à `0xc19dc0` et a trouvé une référence directe à `0x889735`. Le prochain run doit récupérer le pseudocode et l'assembly de la procédure englobante pour établir si elle correspond à une API/script de pathfinding, un enregistrement d'interface, ou à un autre mécanisme. C'est une piste ; son nom seul ne suffit pas pour conclure.
 
-Puis, examiner `0x483a6a`, également appelé après la branche géométrique, si son rôle reste inconnu. Ensuite, si la piste d'occupation spatiale se confirme, lancer des recherches ciblées de xrefs autour de `kbCanPath2` (`0xc19dc0`) et `kbCanSimPath` (`0xc19e68`) pour séparer calcul géométrique et véritable pathfinding.
+Si l'adresse ne se résout pas en procédure utile, examiner le contexte du site de référence puis effectuer la même démarche sur `kbCanSimPath` (`0xc19e68`). Après la validation de ces pistes, reprendre les pistes de déplacement, économie et IA. Les runs #20–23 ont suffisamment étayé une première piste de géométrie/occupation pour permettre ce changement de priorité.
 
-Continuer à noter le run, l'input, le binaire/hash, les adresses et extraits qui fondent l'interprétation, ainsi que les inconnues. Les fonctions `FUN_...` sont des noms synthétiques de Ghidra ; ne pas traiter le pseudocode comme la source originale.
+Garder les adresses et la nature des références séparées des interprétations. Le pseudocode Ghidra n'est pas le source original et les corps de fonctions non contigus demandent une vérification du flux de contrôle.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -103,4 +100,4 @@ Continuer à noter le run, l'input, le binaire/hash, les adresses et extraits qu
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons le projet https://github.com/rakmahefa/aoe-rea. Le run #21 a réussi avec `function_selector=0x483d4c`. `FUN_00483d4c` écrit les quatre coins d'un rectangle à partir de deux coordonnées et de deux dimensions, plus des champs indicateurs. Dans le contexte du run #20 (`FUN_004839bb`), cela suggère une géométrie/empreinte liée aux obstructions, mais le rôle exact des champs reste inconnu et la routine est aussi appelée depuis deux autres fonctions. Le run #20 montrait également un helper qui met à jour une grille spatiale ; la preuve combinée suggère des traitements d'obstruction/occupation de carte mais pas encore le pathfinding. Prochaine cible : `function_selector=0x4a5558`, l'autre branche de `FUN_004839bb`, puis `0x483a6a`. Prioriser unités/obstacles, grille spatiale, déplacement/pathfinding, simulation, économie et IA. Séparer faits et hypothèses, garder les liens run/artifact et créer une branche + PR pour toute modification.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #8 est fusionnée. La PR #9 documente les runs #22–24 et reste ouverte. Le run #24 a réussi avec `xref_address=0xc19dc0` (chaîne `kbCanPath2`) et trouvé une référence directe à `0x889735`. Ce n'est pas encore une fonction confirmée : prochaine cible `function_selector=0x889735` pour analyser sa procédure englobante et vérifier le contexte. Les runs #20–23 soutiennent à confiance moyenne une piste géométrie/obstruction/occupation spatiale, sans prouver le pathfinding. Ensuite, répéter les xrefs sur `kbCanSimPath` (`0xc19e68`). Prioriser unités, déplacement/pathfinding, simulation, économie et IA. Séparer les faits des hypothèses, conserver les liens run/artifact et créer une branche + PR pour toute modification.
