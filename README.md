@@ -58,19 +58,24 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38373803219). It ran an xref query for the defined string `kbCanPath2` at `0xc19dc0`, a script-facing clue to pathfinding found in run #18.
+The latest verified analysis is [REA binary analysis #25](https://github.com/rakmahefa/aoe-rea/actions/runs/38383598678). It followed the xref for the script-facing string `kbCanPath2` and analyzed reference site `0x889735`.
 
-### Run #24 — xref for `kbCanPath2`
+### Run #25 — script API registration and pathfinding callback addresses
 
-The workflow succeeded. `xrefs.json` returns one direct reference site, `0x889735`, with confidence `observed`. The report does not include the reference kind or a containing function dossier, so this is a **code-reference lead**, not yet confirmation that the containing procedure implements pathfinding.
+REA resolved the selected address `0x889735` to `FUN_00885d07`, a large routine spanning `0x885d07–0x890373` (42,605 bytes). The pseudocode shows that this routine registers many script-callable knowledge-base APIs by name, callback pointer, argument count, parameter metadata and a human-readable description. Thus, `0x889735` is in an API-registration routine, not itself a demonstrated pathfinding algorithm.
 
-- Query input: `xref_address=0xc19dc0`; `function_selector` and `search_query` blank.
+Crucially, the registration calls in its pseudocode map the API names to callback labels:
+- `kbCanSimPath` → `LAB_0088277e` (address `0x88277e`), registered with argument count 8.
+- `kbCanPath2` → `LAB_008827cc` (address `0x8827cc`), registered with argument count 8.
+
+The adjacent descriptions say the calls take two vectors, a `protoUnitTypeID` and a range, and return whether that unit type can path between the points. This confirms the purpose of the exposed script APIs at the documentation level and supplies **two much stronger function-analysis candidates**. It does not yet reveal their native implementations: the callback labels must be analyzed directly to establish whether they implement the path check, wrap another system, or delegate to common logic.
+
+Run details:
+- Input: `function_selector=0x889735`; `search_query` and `xref_address` blank.
 - Target: `retro/exe et dll/age3y.exe`; SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`.
-- Run ID `38373803219`; artifact ID `11800685934`; artifact `rea-analysis`.
-- Analyzed commit: `ad539edede393f8d954bea01266e8d31fb4121f5`; REA 6.4.0; Ghidra 12.1.4.
-- The run did not generate a function dossier because the workflow performed xref-only analysis.
-
-The next step is to run `function_selector=0x889735`. As in run #19, which used a string-reference instruction to find the containing function, REA should resolve the selected address to a procedure if Ghidra has identified one there. Inspect the pseudocode, assembly and callers to find whether the reference is inside a gameplay routine, a script/API registration table, or some other code. Do not infer the function's purpose from the string name alone. If this reference site doesn't resolve into a meaningful procedure, inspect the exact disassembly/cross-reference context and then try the separate `kbCanSimPath` clue at `0xc19e68`.
+- Run ID `38383598678`; artifact ID `11806243077`; artifact `rea-analysis`.
+- Analyzed commit: `1bc90c969386fa8d1771685a07a9e4baa63987a2`; REA 6.4.0; Ghidra 12.1.4.
+- Function: `FUN_00885d07`, one contiguous Ghidra body of 42,605 bytes. It references 1,555 strings and lists 11 direct callees; the visible pseudocode is dominated by API registration and setup checks.
 
 ### Geometry findings from runs #20–23
 
@@ -78,10 +83,11 @@ The next step is to run `function_selector=0x889735`. As in run #19, which used 
 - **Run #21**: `FUN_00483d4c` computes four axis-aligned rectangle corners from two coordinate values and two extents, then writes byte fields into a structure.
 - **Run #22**: `FUN_004a5558` calculates four coordinate pairs using products/combinations of floating-point parameters and calls `FUN_004a5489`, which compares vertex coordinates and writes byte fields. Compared with #21, its arithmetic is consistent with an oriented quadrilateral/footprint, but the exact parameter and field meanings remain unknown.
 - **Run #23**: `FUN_00483a6a` runs conditional checks, returns a code between 0 and 4, and may set bits in the associated object's state byte at offset `+0x1b`. Several calls use unresolved indirect dispatches, so the meanings of the codes and bits remain unknown.
+- **Run #24**: an xref query for the `kbCanPath2` documentation string at `0xc19dc0` returned reference site `0x889735`, leading to the registration routine in run #25.
 
-Taken together, runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. This is an inference from control flow and arithmetic, not a fully identified engine subsystem and not proof of the pathfinding algorithm. Several involved procedures have non-contiguous Ghidra body ranges and should be checked before treating every distant range as a conventional function body.
+Together, runs #20–23 provide **medium-confidence evidence of a geometry representation used in an obstruction-related path with subsequent state validation and spatial-cell handling**. Run #25 establishes how two path-checking script APIs are wired to native callback addresses, but the callback behavior has not yet been decoded. Keep geometric occupancy and pathfinding separate until the callback dossiers supply evidence linking them.
 
-Runs #12–14 documented a separate particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
+Several earlier functions have non-contiguous Ghidra body ranges; verify control flow before treating every distant range as a conventional function body. Runs #12–14 documented a separate particle-definition loading path, still lower priority than gameplay logic. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
