@@ -58,21 +58,23 @@ When `search_query` or `xref_address` is set without `function_selector`, the wo
 
 ## Current investigation status (2026-10-13)
 
-The latest verified analysis is [REA binary analysis #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38347489501). It used `function_selector=0x6a15ca`, the code address found by run #19's cross-reference query for the unit obstruction diagnostic.
+The latest verified analysis is [REA binary analysis #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38350963849). It used `function_selector=0x483d4c`, the normal-branch geometry helper called by `FUN_004839bb` in run #20.
 
-REA successfully resolved the containing Ghidra procedure as `FUN_004839bb`, entry address `0x4839bb`. Its pseudocode:
-- checks for a valid associated object at `this+0x90`;
-- checks the object's byte field at offset `0x18` and emits `Unit %d (%S) has a non-unit obstruction type %d` when it is not `1`, then returns failure;
-- otherwise chooses between `FUN_00483d4c` and `FUN_004a5558` using a property/flag test, with coordinate-like values and dimensions from the associated structure;
-- calls `FUN_00483a6a` and then `FUN_0048380f`.
+Run #21 successfully resolved `FUN_00483d4c` as a real, non-thunk Ghidra procedure. Its 89-byte body is one contiguous range (`0x483d4c–0x483da4`), unlike the unusually segmented body of its caller. The pseudocode writes four corner-coordinate pairs based on two input coordinates and two extents:
+- `(x-w, y-h)`
+- `(x-w, y+h)`
+- `(x+w, y+h)`
+- `(x+w, y-h)`
 
-The recovered `FUN_0048380f` pseudocode converts four float bounds to map coordinates, clamps them to the grid dimensions, compares old and new cells, updates spatial-cell membership and invokes insertion/removal helpers. This provides **medium-confidence evidence of unit obstruction/spatial-grid bookkeeping** around `FUN_004839bb`; it does not yet establish that the target implements pathfinding or movement itself.
+It also writes constant byte values at offsets `+0x19`, `+0x1c`–`+0x1f` in the supplied structure. The interpretation as a rectangle/footprint is supported directly by the arithmetic; the exact semantics of the byte fields are not known. In run #20's caller context, this helper is selected on the regular branch of an obstruction-related function and receives coordinate-like values and dimensions, so **rectangular obstruction geometry is a plausible interpretation**, not an established engine-level label.
 
-Caveat: Ghidra assigns `FUN_004839bb` three non-contiguous body ranges (`0x4839bb–0x483a69`, `0x4b8f9e–0x4b8fc8`, and `0x6a1598–0x6a15e8`), and the combined span is over 2.2 MB. The distant branch ranges could be recovered cold blocks, but this unusual function-body layout warrants checking the instructions/call graph before relying on every inferred boundary. The selected reference instruction at `0x6a15ca` is in the third range.
+The helper has no outgoing calls and no referenced strings. Its incoming calls include `FUN_004839bb` (at `0x483a47`), plus `FUN_00497884` and `FUN_004e4a30`; it may therefore be a shared geometry routine rather than unit-specific code. Combined with `FUN_0048380f` from run #20, this improves the evidence for geometry/spatial-cell handling around units and obstacles, but it still does not demonstrate movement or pathfinding itself.
 
-The next useful target is `0x483d4c`, a direct callee on the normal branch that appears to process the obstruction/geometry data. After inspecting its dossier, compare the alternate helper `0x4a5558` and the follow-up `0x483a6a` if needed. The #18 string search still provides independent leads for pathfinding (`kbCanPath2` at `0xc19dc0`, `kbCanSimPath` at `0xc19e68`), unit counts, economy and script-facing movement commands.
+Caveat: the input binary is the same fixed PE32 x86 file (`age3y.exe`, SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d)); REA 6.4.0 and Ghidra 12.1.4 were used. The parent `FUN_004839bb` still has three non-contiguous body ranges spanning over 2.2 MB, so treat its inferred body boundaries cautiously. The helper `FUN_00483d4c` itself does not have this segmentation issue.
 
-The earlier runs #12–#14 established a separate particle-definition loading path. It remains a lower priority unless later evidence links it to gameplay. No original source or native Linux executable has been recovered or built.
+The next focused target is `0x4a5558`, the alternative geometry branch called by `FUN_004839bb`. Comparing it with `0x483d4c` should show what the caller's property/flag test changes. Then inspect `0x483a6a` if its role remains unclear. In parallel, pathfinding leads from run #18 remain `kbCanPath2` (`0xc19dc0`) and `kbCanSimPath` (`0xc19e68`), with economy and movement script APIs as further searches.
+
+Runs #12–#14 established a separate particle-definition loading path; it remains a lower priority unless later evidence links it to gameplay. No original source or native Linux executable has been recovered or built.
 
 ## Linux build and release plan
 
