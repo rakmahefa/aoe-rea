@@ -113,19 +113,26 @@ jobs:
               rea_version: $rea_version,
               ghidra_version: $ghidra_version,
               analysed_at_utc: $analysed_at,
-              purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
+              purpose: "Focused static native procedure analysis of a direct CALL target; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Inspect native instruction at 0x8827e2
+      - name: Analyze direct CALL target 0x44cb21
         shell: bash
         run: |
           set -euo pipefail
-          rea inspect-native-instruction "$TARGET_PATH" "0x8827e2" --provider ghidra --json \
-            > "$REPORT_DIR/instruction.json" \
-            2> "$REPORT_DIR/instruction.stderr.log"
-          jq -e . "$REPORT_DIR/instruction.json" > /dev/null
-          printf '%s\n' '- Native instruction at `0x8827e2`: see `instruction.json`' \
-            >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          rea function "$TARGET_PATH" "0x44cb21" --provider ghidra --json \
+            > "$REPORT_DIR/function.json" \
+            2> "$REPORT_DIR/function.stderr.log"
+          function_status=$?
+          set -e
+          if [[ "$function_status" -eq 0 ]] && jq -e . "$REPORT_DIR/function.json" > /dev/null 2>&1; then
+            printf '%s\n' '- Function dossier for direct CALL target `0x44cb21`: see `function.json`' \
+              >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '%s\n' "- REA could not resolve a function dossier for `0x44cb21` (exit $function_status); see `function.stderr.log` and `function.json`." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload REA analysis report
         if: always()
