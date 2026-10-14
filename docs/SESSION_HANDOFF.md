@@ -2,7 +2,7 @@
 
 **Mise à jour : 14 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827f3`](https://github.com/rakmahefa/aoe-rea/actions/runs/38513028245)
+**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827f8`](https://github.com/rakmahefa/aoe-rea/actions/runs/38513505693)
 
 ## 1. But du projet
 
@@ -105,6 +105,7 @@ Toutes les adresses d'instruction ci-dessous décodent dans le binaire de réfé
 | `0x8827f3` | `JNZ 0x8827f8`, 2 octets, saut conditionnel direct | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38513028245), [11870374493](https://github.com/rakmahefa/aoe-rea/actions/runs/38513028245/artifacts/11870374493) |
 | `0x8827f5` | `XOR AL,AL`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586), [11868359993](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586/artifacts/11868359993) |
 | `0x8827f7` | `RET`, 1 octet, `RETURN` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181), [11870545584](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181/artifacts/11870545584) |
+| `0x8827f8` | `MOV EDX,[ESP+0xc]`, 4 octets, `FALL_THROUGH`, `procedure=null` | [run #14](https://github.com/rakmahefa/aoe-rea/actions/runs/38513505693), [11870019274](https://github.com/rakmahefa/aoe-rea/actions/runs/38513505693/artifacts/11870019274) |
 
 ### Helper appelé
 
@@ -114,11 +115,11 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 
 - **Fait observé :** les deux sauts conditionnels à `0x8827d9` et `0x8827e9` ciblent `0x8827f5`. La destination exécute `XOR AL,AL`, puis `RET` à `0x8827f7`. Ce chemin efface explicitement l'octet bas de retour `AL` avant `RET`. C'est cohérent avec un résultat booléen faux, mais ne prouve pas que le registre 32 bits `EAX` entier vaut zéro.
 - **Fait observé :** si `ECX` est nul, le premier `JZ` prend ce chemin qui met `AL` à zéro avant le retour. Sinon, le code appelle le helper avec la valeur lue à `0x00c66664`, teste `EAX`, puis prend le même chemin `AL=0; RET` si le résultat est nul.
-- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb`, où `MOV EAX,[EAX+0x80]` est décodé. Le `TEST EAX,EAX` à `0x8827f1` est suivi de `JNZ 0x8827f8` à `0x8827f3`. Si `EAX` est nul, le flux séquentiel tombe dans le bloc `AL=0; RET` à `0x8827f5–0x8827f7`; sinon le saut mène à `0x8827f8`.
+- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb`, où `MOV EAX,[EAX+0x80]` est décodé. Le `TEST EAX,EAX` à `0x8827f1` est suivi de `JNZ 0x8827f8` à `0x8827f3`. Si `EAX` est nul, le flux séquentiel tombe dans le bloc `AL=0; RET` à `0x8827f5–0x8827f7`; sinon le saut mène à `0x8827f8`. Cette adresse décode `8b 54 24 0c` en `MOV EDX,dword ptr [ESP+0xc]` (4 octets, `FALL_THROUGH`, `procedure=null`). Cela lit un dword depuis la pile ; l'argument ou la variable représentée n'est pas établi. La cible séquentielle est `0x8827fc`.
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x8827f8`, la destination non nulle confirmée par le `JNZ` de `0x8827f3`. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x8827fc`, après les 4 octets de l'instruction à `0x8827f8`. Le [run #15](https://github.com/rakmahefa/aoe-rea/actions/runs/38526015005) est actuellement en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
