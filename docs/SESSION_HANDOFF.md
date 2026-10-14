@@ -1,8 +1,8 @@
 # Passation de session — projet aoe-rea
 
-**Mise à jour : 13 octobre 2026**  
+**Mise à jour : 14 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernier run vérifié lors de la rédaction :** [REA binary analysis #29](https://github.com/rakmahefa/aoe-rea/actions/runs/38448930654)
+**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827eb`](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239)
 
 ## 1. But du projet
 
@@ -59,8 +59,9 @@ Le workflow réalise de l’analyse statique et publie un artifact temporaire (r
 | [#27](https://github.com/rakmahefa/aoe-rea/actions/runs/38433174077) | Input répété : `function_selector=0x8827cc` | Même échec que #26. Les logs confirment que `FUNCTION_SELECTOR=0x8827cc` est encore fourni et que `xref_address` est vide ; le diagnostic xref demandé n'a donc pas eu lieu. La prochaine exécution doit mettre `0x8827cc` dans le champ `xref_address` et laisser `function_selector` vide. |
 | [#28](https://github.com/rakmahefa/aoe-rea/actions/runs/38437864410) | `xref_address=0x8827cc` | Succès. `xrefs.json` retourne une seule référence à `0x88960a`, l'instruction de la routine d'enregistrement qui pousse le pointeur de callback avant l'appel à `FUN_00624f52`. Le xref confirme l'enregistrement, mais ne révèle pas le corps du callback ; prochaine étape : inspecter l'instruction à `0x8827cc` directement. |
 | [#29](https://github.com/rakmahefa/aoe-rea/actions/runs/38448930654) | `instruction_address=0x8827cc` | Succès. La nouvelle inspection décode 5 octets (`a1 34 62 c6 00`) en `MOV EAX,[0x00c66234]`, une lecture de donnée/global, sans procédure englobante récupérée (`procedure=null`). Le flux est `FALL_THROUGH`. Étape suivante : inspecter l’instruction à `0x8827d1`, puis continuer selon le flux de contrôle observé. |
+| [#30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) | `instruction_address=0x8827d1` | Succès. Six octets (`8b 88 3c 01 00 00`) se décodent en `MOV ECX,dword ptr [EAX + 0x13c]`, flux `FALL_THROUGH`, `procedure=null`. Artifact `11841443159`. Les sondes ultérieures sont documentées à la section 5. |
 
-### Dernier run en détail — #29
+### Détail de référence — run #29
 
 Le [run #29](https://github.com/rakmahefa/aoe-rea/actions/runs/38448930654) s'est terminé avec succès le 13 octobre 2026.
 
@@ -82,23 +83,40 @@ Interprétation prudente : l'adresse callback correspond bien à des octets que 
 
 Comme la longueur décodée est 5 octets et le flux est fall-through, l'adresse adjacente suivante est `0x8827d1`. L'inspection instruction par instruction devra reconstruire assez de séquence pour identifier les opérations suivantes et un éventuel saut/appel/retour. L'adresse du callback reste une étiquette de code, pas encore une entrée de procédure Ghidra reconnue.
 
-## 5. Prochaine étape conseillée
+## 5. État actuel de `kbCanPath2` et prochaine étape
 
-**Inspecter la prochaine instruction à `0x8827d1`.**
+### Séquence native observée
 
-Lancer le workflow avec :
+Toutes les adresses d'instruction ci-dessous décodent dans le binaire de référence avec Ghidra 12.1.4. Pour les instructions du callback, REA rapporte toujours `procedure=null`; elles ne prouvent donc pas encore la frontière d'une procédure complète.
 
-- `target_path=retro/exe et dll/age3y.exe`
-- `instruction_address=0x8827d1`
-- `function_selector` vide
-- `search_query` vide
-- `xref_address` vide
+| Adresse | Instruction et flux | Run / artifact |
+|---|---|---|
+| `0x8827cc` | `a1 34 62 c6 00` — `MOV EAX,[0x00c66234]`, 5 octets, `FALL_THROUGH` | [#29](https://github.com/rakmahefa/aoe-rea/actions/runs/38448930654), [11839108635](https://github.com/rakmahefa/aoe-rea/actions/runs/38448930654/artifacts/11839108635) |
+| `0x8827d1` | `8b 88 3c 01 00 00` — `MOV ECX,[EAX+0x13c]`, 6 octets, `FALL_THROUGH` | [#30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507), [11841443159](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507/artifacts/11841443159) |
+| `0x8827d7` | `TEST ECX,ECX`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38505129056), [11868005187](https://github.com/rakmahefa/aoe-rea/actions/runs/38505129056/artifacts/11868005187) |
+| `0x8827d9` | `JZ 0x8827f5`, saut conditionnel, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38505701574), [11867433197](https://github.com/rakmahefa/aoe-rea/actions/runs/38505701574/artifacts/11867433197) |
+| `0x8827db` | `MOV EDX,[0x00c66664]`, 6 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38506248967), [11868017112](https://github.com/rakmahefa/aoe-rea/actions/runs/38506248967/artifacts/11868017112) |
+| `0x8827e1` | `PUSH EDX`, 1 octet | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38506676784), [11868386272](https://github.com/rakmahefa/aoe-rea/actions/runs/38506676784/artifacts/11868386272) |
+| `0x8827e2` | `CALL 0x44cb21`, 5 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38507195067), [11868985480](https://github.com/rakmahefa/aoe-rea/actions/runs/38507195067/artifacts/11868985480) |
+| `0x8827e7` | `TEST EAX,EAX`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508299938), [11868907012](https://github.com/rakmahefa/aoe-rea/actions/runs/38508299938/artifacts/11868907012) |
+| `0x8827e9` | `JZ 0x8827f5`, saut conditionnel, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508675506), [11869745563](https://github.com/rakmahefa/aoe-rea/actions/runs/38508675506/artifacts/11869745563) |
+| `0x8827eb` | `MOV EAX,[EAX+0x80]`, 6 octets, `FALL_THROUGH` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239), [11870287872](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239/artifacts/11870287872) |
+| `0x8827f5` | `XOR AL,AL`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586), [11868359993](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586/artifacts/11868359993) |
+| `0x8827f7` | `RET`, 1 octet, `RETURN` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181), [11870545584](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181/artifacts/11870545584) |
 
-Le run #29 a décodé `0x8827cc` comme une instruction de 5 octets : `MOV EAX,[0x00c66234]`, avec `FALL_THROUGH`. L'adresse suivante dans le flux linéaire est donc `0x8827d1`. Lire son instruction et sa longueur, puis continuer sur l'adresse suivante si le flux demeure fall-through. Dès qu'une instruction de branchement, d'appel ou de retour apparaît, inspecter les cibles ou le bloc pertinent au lieu de supposer une séquence linéaire.
+### Helper appelé
 
-Le callback `kbCanPath2` est enregistré à `0x8827cc`, mais Ghidra ne fournit pas encore une entrée de procédure ni son corps entier. Ne pas passer ces adresses à `function_selector` tant qu'une vraie entrée de procédure n'est pas confirmée. La comparaison avec le callback `kbCanSimPath` (`0x88277e`) attend que son code soit trouvé.
+Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https://github.com/rakmahefa/aoe-rea/actions/runs/38507674474), [artifact 11868089731](https://github.com/rakmahefa/aoe-rea/actions/runs/38507674474/artifacts/11868089731)) indique que la fonction vérifie que son argument entier est non négatif et inférieur à `*(ECX+0x5c)`. Si l'index est valide, elle lit un dword depuis le tableau pointé par `ECX+0x58`; sinon elle renvoie zéro. Le corps Ghidra est non contigu : `0x44cb21–0x44cb3e` et `0x4649e1–0x4649e5`. Au site d'appel, `EDX` est poussé en argument après avoir été chargé depuis `0x00c66664`; `ECX) conserve la valeur chargée depuis `[EAX+0x13c]`.
 
-Garder distincts les indices de géométrie/obstruction des runs #20–23 et le travail sur le callback de pathfinding. Aucune implémentation native complète n'a encore été identifiée.
+### Faits vs hypothèses
+
+- **Fait observé :** les deux sauts conditionnels à `0x8827d9` et `0x8827e9` ciblent `0x8827f5`. La destination exécute `XOR AL,AL`, puis `RET` à `0x8827f7`. Ce chemin produit donc une valeur de retour nulle.
+- **Fait observé :** si `ECX) est nul, le premier `JZ` prend ce chemin de retour nul. Sinon, le code appelle le helper avec la valeur lue à `0x00c66664), teste `EAX), puis prend le même chemin de retour nul si le résultat est nul.
+- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb), où `MOV EAX,[EAX+0x80]` est décodé. La prochaine adresse séquentielle est `0x8827f1).
+- **Hypothèse limitée :** `FUN_0044cb21) ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664), ni le rôle des offsets `+0x13c) et `+0x80) ne sont connus.
+- La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
+
+**Prochaine action :** inspecter `0x8827f1), calculé depuis la longueur de 6 octets de l'instruction à `0x8827eb). Continuer selon la longueur et le flux réellement décodés ; si un appel, saut ou retour apparaît, suivre sa cible au lieu de supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc) tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -112,4 +130,4 @@ Garder distincts les indices de géométrie/obstruction des runs #20–23 et le 
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée ; son nouveau paramètre `instruction_address` a fonctionné au run #29. L'inspection de `0x8827cc` a décodé les octets `a1 34 62 c6 00` comme `MOV EAX,[0x00c66234]`, longueur 5, flux `FALL_THROUGH`, référence de lecture vers `0x00c66234`, mais `procedure=null`. Cela confirme une instruction à l'adresse callback `kbCanPath2`, sans retrouver sa fonction entière. Prochaine cible : `instruction_address=0x8827d1`, puis continuer l'inspection adjacent selon les longueurs et flux jusqu'à retrouver appels/sauts/retours et la procédure englobante. La piste géométrie/obstruction/occupation des runs #20–23 reste séparée. Garder les faits et les hypothèses séparés, avec liens run/artifact et modifications via branche + PR.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5), puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Après `TEST EAX,EAX; JZ 0x8827f5), le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` donne le chemin retour-zéro. Le chemin non nul continue à `0x8827eb: MOV EAX,[EAX+0x80]` ; prochaine cible `0x8827f1`. Procedure du callback toujours non résolue; garder faits et hypothèses séparés, liens run/artifact, piste géométrie des runs #20–23 distincte, changements via branche + PR.
