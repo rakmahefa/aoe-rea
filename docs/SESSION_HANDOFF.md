@@ -120,7 +120,7 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x8827fc`, après les 5 octets de l'instruction à `0x8827fc`. Le [run #16](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966) est actuellement en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x882801`, l'adresse séquentielle après les 5 octets de `PUSH 0x799782` à `0x8827fc`. Le [run #16](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966) est actuellement en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
