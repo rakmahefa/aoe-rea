@@ -2,7 +2,7 @@
 
 **Mise à jour : 14 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827f8`](https://github.com/rakmahefa/aoe-rea/actions/runs/38513505693)
+**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x882801`](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966)
 
 ## 1. But du projet
 
@@ -121,7 +121,7 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x882801`, l'adresse séquentielle après les 5 octets de `PUSH 0x799782` à `0x8827fc`. Le [run #17](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929) est actuellement en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x882803`, l'adresse séquentielle après les 2 octets de `PUSH 0x0` à `0x882801`. Le [run #17](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929) est actuellement en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -135,4 +135,4 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Après `TEST EAX,EAX; JZ 0x8827f5`, le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` donne le chemin de retour avec `AL=0` (sans établir la valeur des 24 bits supérieurs de `EAX`). Le chemin non nul continue à `0x8827eb: MOV EAX,[EAX+0x80]` ; prochaine cible `0x8827f8`. Procedure du callback toujours non résolue; garder faits et hypothèses séparés, liens run/artifact, piste géométrie des runs #20–23 distincte, changements via branche + PR.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Les sauts `JZ` aboutissent au bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET`, qui efface `AL` sans prouver que les 32 bits de `EAX` sont zéro. Le chemin non nul passe par `0x8827eb: MOV EAX,[EAX+0x80]`, puis `0x8827f3: JNZ 0x8827f8`. Ensuite `0x8827f8: MOV EDX,[ESP+0xc]`, `0x8827fc: PUSH 0x799782` (référence DATA) et `0x882801: PUSH 0x0` ont été décodés. Prochaine cible `0x882803`; run #17: https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929. Procedure du callback toujours non résolue; garder faits et hypothèses séparés, liens run/artifact, piste géométrie des runs #20–23 distincte, modifications via branche + PR.
