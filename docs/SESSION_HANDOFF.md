@@ -109,6 +109,7 @@ Toutes les adresses d'instruction ci-dessous décodent dans le binaire de réfé
 | `0x8827fc` | `PUSH 0x799782`, 5 octets, `FALL_THROUGH`, référence `DATA` vers `0x799782` | [run #15](https://github.com/rakmahefa/aoe-rea/actions/runs/38526015005), [11875972173](https://github.com/rakmahefa/aoe-rea/actions/runs/38526015005/artifacts/11875972173) |
 | `0x882801` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #16](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966), [11876875242](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966/artifacts/11876875242) |
 | `0x882803` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #17](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929), [11876802096](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929/artifacts/11876802096) |
+| `0x882805` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38528517211), [11877336853](https://github.com/rakmahefa/aoe-rea/actions/runs/38528517211/artifacts/11877336853) |
 
 ### Helper appelé
 
@@ -122,7 +123,7 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x882805`, l'adresse séquentielle après les 2 octets de `PUSH 0x0` à `0x882803`. Le [run #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38528517211) est en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x882807`, l'adresse séquentielle après les 2 octets de `PUSH 0x0` à `0x882805`. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -136,4 +137,4 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` efface `AL` sans prouver que tous les bits de `EAX` sont zéro. Le chemin non nul passe par `0x8827eb: MOV EAX,[EAX+0x80]`, puis `0x8827f3: JNZ 0x8827f8`. Ensuite `0x8827f8: MOV EDX,[ESP+0xc]`, `0x8827fc: PUSH 0x799782` (référence DATA), `0x882801: PUSH 0x0` et `0x882803: PUSH 0x0` ont été décodés. Prochaine cible `0x882805`; la nouvelle sonde doit être lancée via branche + PR, sans deviner la longueur. La procédure du callback reste non résolue, et la piste géométrie des runs #20–23 reste séparée.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis `CALL 0x44cb21` avec un argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` efface `AL` sans prouver que tous les bits de `EAX` sont zéro. Le chemin non nul continue par `0x8827eb: MOV EAX,[EAX+0x80]`, puis `0x8827f3: JNZ 0x8827f8`. Ensuite : `0x8827f8: MOV EDX,[ESP+0xc]`, `0x8827fc: PUSH 0x799782` (référence DATA), puis `PUSH 0x0` aux adresses `0x882801`, `0x882803` et `0x882805`. Prochaine cible `0x882807`. Procedure du callback encore non résolue; garder les faits et hypothèses séparés, lier chaque fait à son run/artifact, garder la piste géométrie des runs #20–23 distincte et travailler via branche + PR.
