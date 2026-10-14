@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rea-probe-882811
+  group: rea-probe-882812
   cancel-in-progress: false
 
 jobs:
@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Inspect native instruction at 0x882811
+      - name: Inspect native instruction at 0x882812
         shell: bash
         run: |
           set -euo pipefail
-          rea inspect-native-instruction "$TARGET_PATH" "0x882811" --provider ghidra --json \
+          rea inspect-native-instruction "$TARGET_PATH" "0x882812" --provider ghidra --json \
             > "$REPORT_DIR/instruction.json" \
             2> "$REPORT_DIR/instruction.stderr.log"
           jq -e . "$REPORT_DIR/instruction.json" > /dev/null
-          printf '%s\n' '- Native instruction at `0x882811`: see `instruction.json`' \
+          printf '%s\n' '- Native instruction at `0x882812`: see `instruction.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
