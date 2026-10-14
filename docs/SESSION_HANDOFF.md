@@ -110,6 +110,7 @@ Toutes les adresses d'instruction ci-dessous décodent dans le binaire de réfé
 | `0x882801` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #16](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966), [11876875242](https://github.com/rakmahefa/aoe-rea/actions/runs/38526782966/artifacts/11876875242) |
 | `0x882803` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #17](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929), [11876802096](https://github.com/rakmahefa/aoe-rea/actions/runs/38527580929/artifacts/11876802096) |
 | `0x882805` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #18](https://github.com/rakmahefa/aoe-rea/actions/runs/38528517211), [11877336853](https://github.com/rakmahefa/aoe-rea/actions/runs/38528517211/artifacts/11877336853) |
+| `0x882807` | `PUSH 0x0`, 2 octets, `FALL_THROUGH`, `procedure=null` | [run #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38529441143), [11878120336](https://github.com/rakmahefa/aoe-rea/actions/runs/38529441143/artifacts/11878120336) |
 
 ### Helper appelé
 
@@ -123,7 +124,7 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x882807`, l'adresse séquentielle après les 2 octets de `PUSH 0x0` à `0x882805`. Le [run #19](https://github.com/rakmahefa/aoe-rea/actions/runs/38529441143) est en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x882809`, l'adresse séquentielle après les 2 octets de `PUSH 0x0` à `0x882807`. Le [run #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38530554944) est en cours pour cette adresse. Continuer selon la longueur et le flux réellement décodés ; suivre les cibles de saut/appel et ne pas supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
