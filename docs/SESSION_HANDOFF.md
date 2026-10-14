@@ -2,7 +2,7 @@
 
 **Mise à jour : 14 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827eb`](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239)
+**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dernière sonde ciblée terminée : [instruction `0x8827f1`](https://github.com/rakmahefa/aoe-rea/actions/runs/38512425597)
 
 ## 1. But du projet
 
@@ -101,6 +101,7 @@ Toutes les adresses d'instruction ci-dessous décodent dans le binaire de réfé
 | `0x8827e7` | `TEST EAX,EAX`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508299938), [11868907012](https://github.com/rakmahefa/aoe-rea/actions/runs/38508299938/artifacts/11868907012) |
 | `0x8827e9` | `JZ 0x8827f5`, saut conditionnel, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508675506), [11869745563](https://github.com/rakmahefa/aoe-rea/actions/runs/38508675506/artifacts/11869745563) |
 | `0x8827eb` | `MOV EAX,[EAX+0x80]`, 6 octets, `FALL_THROUGH` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239), [11870287872](https://github.com/rakmahefa/aoe-rea/actions/runs/38512045239/artifacts/11870287872) |
+| `0x8827f1` | `TEST EAX,EAX`, 2 octets, `FALL_THROUGH` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38512425597), [11870802007](https://github.com/rakmahefa/aoe-rea/actions/runs/38512425597/artifacts/11870802007) |
 | `0x8827f5` | `XOR AL,AL`, 2 octets | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586), [11868359993](https://github.com/rakmahefa/aoe-rea/actions/runs/38508468586/artifacts/11868359993) |
 | `0x8827f7` | `RET`, 1 octet, `RETURN` | [probe](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181), [11870545584](https://github.com/rakmahefa/aoe-rea/actions/runs/38511605181/artifacts/11870545584) |
 
@@ -112,11 +113,11 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 
 - **Fait observé :** les deux sauts conditionnels à `0x8827d9` et `0x8827e9` ciblent `0x8827f5`. La destination exécute `XOR AL,AL`, puis `RET` à `0x8827f7`. Ce chemin produit donc une valeur de retour nulle.
 - **Fait observé :** si `ECX` est nul, le premier `JZ` prend ce chemin de retour nul. Sinon, le code appelle le helper avec la valeur lue à `0x00c66664`, teste `EAX`, puis prend le même chemin de retour nul si le résultat est nul.
-- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb`, où `MOV EAX,[EAX+0x80]` est décodé. La prochaine adresse séquentielle est `0x8827f1`.
+- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb`, où `MOV EAX,[EAX+0x80]` est décodé. La prochaine adresse séquentielle est `0x8827f3`.
 - **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x8827f1`, calculé depuis la longueur de 6 octets de l'instruction à `0x8827eb`. Continuer selon la longueur et le flux réellement décodés ; si un appel, saut ou retour apparaît, suivre sa cible au lieu de supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x8827f3`, calculé après la longueur de 2 octets de `TEST EAX,EAX` à `0x8827f1`. Continuer selon la longueur et le flux réellement décodés ; si un appel, saut ou retour apparaît, suivre sa cible au lieu de supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
@@ -130,4 +131,4 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 
 ## 7. Message de démarrage à copier dans une nouvelle session
 
-> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Après `TEST EAX,EAX; JZ 0x8827f5`, le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` donne le chemin retour-zéro. Le chemin non nul continue à `0x8827eb: MOV EAX,[EAX+0x80]` ; prochaine cible `0x8827f1`. Procedure du callback toujours non résolue; garder faits et hypothèses séparés, liens run/artifact, piste géométrie des runs #20–23 distincte, changements via branche + PR.
+> Nous poursuivons https://github.com/rakmahefa/aoe-rea. La PR #11 est fusionnée. Run #30 a décodé `0x8827d1` comme `MOV ECX,[EAX+0x13c]`. Les sondes ciblées ont établi `TEST ECX,ECX; JZ 0x8827f5`, puis un `CALL 0x44cb21` avec argument issu de `[0x00c66664]`. Le helper `FUN_0044cb21` fait un accès indexé borné via les offsets `ECX+0x58` et `ECX+0x5c` (signification métier inconnue). Après `TEST EAX,EAX; JZ 0x8827f5`, le bloc `0x8827f5: XOR AL,AL; 0x8827f7: RET` donne le chemin retour-zéro. Le chemin non nul continue à `0x8827eb: MOV EAX,[EAX+0x80]` ; prochaine cible `0x8827f3`. Procedure du callback toujours non résolue; garder faits et hypothèses séparés, liens run/artifact, piste géométrie des runs #20–23 distincte, changements via branche + PR.
