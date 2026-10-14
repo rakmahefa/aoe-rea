@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Inspect native instruction at 0x8827d9
+      - name: Inspect native instruction at 0x8827db
         shell: bash
         run: |
           set -euo pipefail
-          rea inspect-native-instruction "$TARGET_PATH" "0x8827d9" --provider ghidra --json \
+          rea inspect-native-instruction "$TARGET_PATH" "0x8827db" --provider ghidra --json \
             > "$REPORT_DIR/instruction.json" \
             2> "$REPORT_DIR/instruction.stderr.log"
           jq -e . "$REPORT_DIR/instruction.json" > /dev/null
-          printf '%s\n' '- Native instruction at `0x8827d9`: see `instruction.json`' \
+          printf '%s\n' '- Native instruction at `0x8827db`: see `instruction.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
