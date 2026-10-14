@@ -111,12 +111,12 @@ Le `CALL` à `0x8827e2` vise `FUN_0044cb21`. Son dossier REA/Ghidra ([run](https
 ### Faits vs hypothèses
 
 - **Fait observé :** les deux sauts conditionnels à `0x8827d9` et `0x8827e9` ciblent `0x8827f5`. La destination exécute `XOR AL,AL`, puis `RET` à `0x8827f7`. Ce chemin produit donc une valeur de retour nulle.
-- **Fait observé :** si `ECX) est nul, le premier `JZ` prend ce chemin de retour nul. Sinon, le code appelle le helper avec la valeur lue à `0x00c66664), teste `EAX), puis prend le même chemin de retour nul si le résultat est nul.
-- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb), où `MOV EAX,[EAX+0x80]` est décodé. La prochaine adresse séquentielle est `0x8827f1).
-- **Hypothèse limitée :** `FUN_0044cb21) ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664), ni le rôle des offsets `+0x13c) et `+0x80) ne sont connus.
+- **Fait observé :** si `ECX` est nul, le premier `JZ` prend ce chemin de retour nul. Sinon, le code appelle le helper avec la valeur lue à `0x00c66664`, teste `EAX`, puis prend le même chemin de retour nul si le résultat est nul.
+- **Fait observé :** si le résultat du helper est non nul, le flux tombe à `0x8827eb`, où `MOV EAX,[EAX+0x80]` est décodé. La prochaine adresse séquentielle est `0x8827f1`.
+- **Hypothèse limitée :** `FUN_0044cb21` ressemble à un accessor de collection indexé avec contrôle de bornes. Ni la signification de cette collection, ni celles des globaux `0x00c66234` et `0x00c66664`, ni le rôle des offsets `+0x13c` et `+0x80` ne sont connus.
 - La piste géométrie/obstruction/occupation des runs #20–23 reste indépendante jusqu'à preuve de lien avec cette logique.
 
-**Prochaine action :** inspecter `0x8827f1), calculé depuis la longueur de 6 octets de l'instruction à `0x8827eb). Continuer selon la longueur et le flux réellement décodés ; si un appel, saut ou retour apparaît, suivre sa cible au lieu de supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc) tant que l'entrée d'une vraie procédure n'est pas confirmée.
+**Prochaine action :** inspecter `0x8827f1`, calculé depuis la longueur de 6 octets de l'instruction à `0x8827eb`. Continuer selon la longueur et le flux réellement décodés ; si un appel, saut ou retour apparaît, suivre sa cible au lieu de supposer une séquence linéaire. Ne pas utiliser `function_selector=0x8827cc` tant que l'entrée d'une vraie procédure n'est pas confirmée.
 
 ## 6. Règles de travail pour la prochaine session
 
