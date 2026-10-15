@@ -2,7 +2,7 @@
 
 **Mise à jour : 15 octobre 2026**  
 **Dépôt :** https://github.com/rakmahefa/aoe-rea  
-**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dossier de fonction `FUN_0087157b` : [sonde ponctuelle #32, Actions run ID 38733263497](https://github.com/rakmahefa/aoe-rea/actions/runs/38733263497) ([artefact 11970339116](https://github.com/rakmahefa/aoe-rea/actions/runs/38733263497/artifacts/11970339116)) ; dossier helper `FUN_00799898` : [sonde #33](https://github.com/rakmahefa/aoe-rea/actions/runs/38734503232) ([artefact 11972660987](https://github.com/rakmahefa/aoe-rea/actions/runs/38734503232/artifacts/11972660987)) ; dossier du résolveur `FUN_00798492` : [sonde #35](https://github.com/rakmahefa/aoe-rea/actions/runs/38736569975) ([artefact 11974527446](https://github.com/rakmahefa/aoe-rea/actions/runs/38736569975/artifacts/11974527446)) ; dossier de l'itérateur `FUN_004af0c9` : [sonde #36](https://github.com/rakmahefa/aoe-rea/actions/runs/38737601357) ([artefact 11973429389](https://github.com/rakmahefa/aoe-rea/actions/runs/38737601357/artifacts/11973429389)) ; dossier de `FUN_004aefe9` : [sonde #37](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167) ([artefact 11975426935](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167/artifacts/11975426935)) ; analyses en cours : `FUN_004af120` [#38](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871) et `FUN_004aefb7` [#39](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626)
+**Dernière analyse principale vérifiée :** [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ; dossier de fonction `FUN_0087157b` : [sonde ponctuelle #32, Actions run ID 38733263497](https://github.com/rakmahefa/aoe-rea/actions/runs/38733263497) ([artefact 11970339116](https://github.com/rakmahefa/aoe-rea/actions/runs/38733263497/artifacts/11970339116)) ; dossier helper `FUN_00799898` : [sonde #33](https://github.com/rakmahefa/aoe-rea/actions/runs/38734503232) ([artefact 11972660987](https://github.com/rakmahefa/aoe-rea/actions/runs/38734503232/artifacts/11972660987)) ; dossier du résolveur `FUN_00798492` : [sonde #35](https://github.com/rakmahefa/aoe-rea/actions/runs/38736569975) ([artefact 11974527446](https://github.com/rakmahefa/aoe-rea/actions/runs/38736569975/artifacts/11974527446)) ; dossier de l'itérateur `FUN_004af0c9` : [sonde #36](https://github.com/rakmahefa/aoe-rea/actions/runs/38737601357) ([artefact 11973429389](https://github.com/rakmahefa/aoe-rea/actions/runs/38737601357/artifacts/11973429389)) ; dossier de `FUN_004aefe9` : [sonde #37](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167) ([artefact 11975426935](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167/artifacts/11975426935)) ; dossier `FUN_004af120` : [sonde #38](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871) ([artefact 11975947354](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871/artifacts/11975947354)) ; dossier `FUN_004aefb7` : [sonde #39](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626) ([artefact 11976087652](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626/artifacts/11976087652)) ; analyse de `FUN_004aeee8` en cours : [probe #40](https://github.com/rakmahefa/aoe-rea/actions/runs/38742083079)
 
 ## 1. But du projet
 
@@ -188,7 +188,7 @@ Preuve : [run #36, ID 38737601357](https://github.com/rakmahefa/aoe-rea/actions/
 - Si elle trouve une correspondance (ou si le premier nœud n'a pas de lien), elle appelle `FUN_004af120(indice, nœud, &DAT_00cafb9c)`, remet à zéro les champs `+0x2c` et `+0x28` du nœud, puis renvoie le pointeur du nœud. Si la chaîne se termine sans correspondance, elle appelle `FUN_00678a72`; une entrée initiale absente passe aussi par ce helper.
 - Appelants connus : `FUN_004ae98b` et `FUN_00798815` (`0x7988d3`).
 
-**Interprétation non résolue :** le corps semble sélectionner/consommer une entrée de table globale et d'une chaîne liée à l'aide d'une clé flottante. Le sens métier de la clé, des trois champs flottants et des champs remis à zéro reste inconnu. La sonde #37 ([run ID 38739802167](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167)) analyse `FUN_004aefe9`, qui fournit les valeurs locales utilisées ici.
+**Interprétation non résolue :** le corps semble sélectionner/consommer une entrée de table globale et d'une chaîne liée à l'aide d'une clé flottante. Le sens métier de la clé, des trois champs flottants et des champs remis à zéro reste inconnu. Le dossier #37 ([Actions run ID 38739802167](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167), artefact [11975426935](https://github.com/rakmahefa/aoe-rea/actions/runs/38739802167/artifacts/11975426935)) montre que `FUN_004aefe9` a la forme d'une extraction du minimum d'un tas, mais la sémantique de la priorité reste inconnue. Le run #38 ([Actions run ID 38740230871](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871), artefact [11975947354](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871/artifacts/11975947354)) établit que `FUN_004af120` retire un nœud d'une liste doublement chaînée. Le run #39 ([Actions run ID 38740603626](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626), artefact [11976087652](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626/artifacts/11976087652)) établit que `FUN_004aefb7` insère un nœud à la fin d'un compartiment de `DAT_00cafba8` sélectionné par un hachage tronqué à 11 bits. Le run #40 (https://github.com/rakmahefa/aoe-rea/actions/runs/38742083079) analyse `FUN_004aeee8`, fonction de hachage appelée par cet insert.
 
 ### Dossier du producteur de clé — `FUN_004aefe9` (sonde ponctuelle #37)
 
@@ -200,6 +200,28 @@ Preuve : [run #37, ID 38739802167](https://github.com/rakmahefa/aoe-rea/actions/
 - Le sens métier du second DWORD, celui de la file globale, les unités de la clé flottante et le rôle de `FUN_0058e2c3` restent inconnus.
 
 **Interprétation, confiance moyenne :** la structure ressemble à une extraction du minimum d'une file de priorité min (retour de la racine, remplacement par le dernier élément, puis rétablissement de l'ordre du tas). C'est une inférence algorithmique, pas le nom original retrouvé ni une preuve de ce que la file priorise. Les runs #38 (https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871) et #39 (https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626) examinent deux helpers voisins de cette gestion des candidats.
+
+### Helper de retrait de nœud — `FUN_004af120` (sonde ponctuelle #38)
+
+Preuve : [run #38, ID 38740230871](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871) ; [artefact 11975947354](https://github.com/rakmahefa/aoe-rea/actions/runs/38740230871/artifacts/11975947354).
+
+- Ghidra rapporte un corps non contigu de 164 octets, réparti sur `0x4af120–0x4af160`, `0x4cfe0c–0x4cfe21`, `0x4ee766–0x4ee796` et `0x678947–0x678962`.
+- La fonction utilise un indice dans la table de têtes de listes pointée par `*param_3`, puis recherche `param_2` dans la chaîne doublement chaînée. Le champ `+0x28` est utilisé comme pointeur `suivant`, et `+0x2c` comme pointeur `précédent`.
+- Si le nœud retiré est la tête, la table est mise à jour vers le nœud suivant et le pointeur précédent de celui-ci est effacé. Sinon, les liens voisins sont reconnectés. Dans les chemins de suppression réussie, `+0x28` et `+0x2c` du nœud cible sont remis à zéro.
+- Appelants indiqués par Ghidra : `FUN_004af0c9`, `FUN_00678a5f` et `FUN_008caa04`.
+
+**Interprétation :** le rôle générique de suppression dans une liste doublement chaînée est fortement établi. Le type métier des nœuds et de la table reste inconnu.
+
+### Insertion dans la chaîne candidate hachée — `FUN_004aefb7` (sonde ponctuelle #39)
+
+Preuve : [run #39, ID 38740603626](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626) ; [artefact 11976087652](https://github.com/rakmahefa/aoe-rea/actions/runs/38740603626/artifacts/11976087652).
+
+- Ghidra rapporte un corps non contigu de 92 octets réparti sur `0x4aefb7–0x4aefe8`, `0x4cfe22–0x4cfe3c` et `0x678a50–0x678a5e`.
+- La fonction appelle `FUN_004aeee8` avec trois valeurs dérivées de `*param_1`, `param_1[2]` et `*(ECX+0x18)`, masque le hachage obtenu par `0x7ff`, puis choisit un compartiment dans la table globale `DAT_00cafba8` (2 048 compartiments possibles).
+- Si le compartiment est vide, il devient la tête de la liste. Sinon, la fonction suit les pointeurs `+0x28` jusqu'à la fin, ajoute le nœud, écrit l'ancien dernier nœud dans le champ précédent `+0x2c` du nouvel élément et met son pointeur suivant `+0x28` à zéro.
+- Appelants connus : `FUN_004ae98b` et `FUN_00798815`.
+
+**Interprétation :** comportement compatible avec une insertion dans une table de hachage à chaînage séparé. Le sens métier de la clé hachée et sa relation avec les autres tables globales ne sont pas établis. La sonde #40 ([run ID 38742083079](https://github.com/rakmahefa/aoe-rea/actions/runs/38742083079)) analyse `FUN_004aeee8`.
 
 ### Faits vs hypothèses
 
