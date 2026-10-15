@@ -307,7 +307,7 @@ Preuve : [run #46, ID 38775891857](https://github.com/rakmahefa/aoe-rea/actions/
 
 - Ghidra rapporte un corps de 78 octets réparti sur trois plages : `0x4aded1–0x4adef1`, `0x4b2368–0x4b2385` et `0x5004bd–0x5004cb`. Les segments disjoints ne doivent pas être lus comme un bloc linéaire.
 - Le pseudocode lit la tête du compartiment depuis `*param_3 + param_1*4`. Si le compartiment est vide, il écrit `param_2` comme nouvelle tête et retourne.
-- Si le compartiment n'est pas vide, il suit les pointeurs suivants `+0x28` jusqu'à la fin de la chaîne, met le champ `+0x28` de la queue à `param_2`, écrit l'ancien nœud de queue dans le champ précédent `+0x2c) du nouveau nœud et efface le pointeur suivant `+0x28) du nouveau nœud.
+- Si le compartiment n'est pas vide, il suit les pointeurs suivants `+0x28` jusqu'à la fin de la chaîne, met le champ `+0x28` de la queue à `param_2`, écrit l'ancien nœud de queue dans le champ précédent `+0x2c` du nouveau nœud et efface le pointeur suivant `+0x28) du nouveau nœud.
 - Ghidra ne rapporte qu'un appelant direct, `FUN_008caa04`, à l'adresse d'appel `0x8cabb2`. Le helper ne calcule pas le hash : l'appelant fournit l'indice de compartiment et le pointeur de la table/tableau de têtes.
 - Sur la branche compartiment vide, le helper n'initialise pas explicitement les liens du nœud inséré. Ne pas supposer qu'il efface toujours ces champs : l'initialisation peut dépendre de l'appelant ou de l'état antérieur du nœud.
 - La forme ressemble à l'insertion dans la table distincte `DAT_00cafba8` effectuée par `FUN_004aefb7` (run #39), mais les deux tables doivent rester séparées faute de preuve sur leur rôle métier.
