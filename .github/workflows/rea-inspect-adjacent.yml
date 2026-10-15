@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rea-dossier-798492
+  group: rea-dossier-4af0c9
   cancel-in-progress: false
 
 jobs:
@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Analyze object resolver procedure at 0x798492
+      - name: Analyze candidate iterator procedure at 0x4af0c9
         shell: bash
         run: |
           set -euo pipefail
-          rea function "$TARGET_PATH" "0x798492" --provider ghidra --json \
+          rea function "$TARGET_PATH" "0x4af0c9" --provider ghidra --json \
             > "$REPORT_DIR/function.json" \
             2> "$REPORT_DIR/function.stderr.log"
           jq -e . "$REPORT_DIR/function.json" > /dev/null
-          printf '%s\n' '- Function dossier at `0x798492`: see `function.json`' \
+          printf '%s\n' '- Function dossier at `0x4af0c9`: see `function.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
