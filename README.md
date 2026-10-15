@@ -271,7 +271,7 @@ Evidence: [Actions run #43, ID 38745133893](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation — strongly supported algorithm shape, not a recovered original name:** the heap priority has the form *accumulated path-like cost + Euclidean distance to a reference position*, which is compatible with an A*-style frontier score. The connection to path-related routines elsewhere makes that hypothesis plausible, but the exact field meanings, units, admissibility of the distance term, and full search algorithm have not been proven. Do not label the function definitively as A*.
 
-**Next target:** inspect `FUN_004ae797`, the lookup helper used by `FUN_004ae7b1` before candidate insertion. With run #46 now showing how a chain is appended to a bucket in `DAT_00cafb9c`, the lookup helper should clarify the matching fields and whether the hash is only a bucket selector. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
+**Next target:** inspect `FUN_004adea4`, called by `FUN_008caa04` when no matching candidate is found in either table, to establish what it allocates or returns. Run #47 now establishes that `FUN_004ae797` matches a candidate by its X/Z coordinates within a `1e-6` absolute tolerance in the selected bucket. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
 
 ### Min-heap priority update: `FUN_004b1e94` — one-shot probe run #44
 
@@ -315,6 +315,19 @@ Evidence: [Actions run #46, ID 38775891857](https://github.com/rakmahefa/aoe-rea
 **Interpretation:** confirmed bucketed singly-traversed next-chain append with a previous-link back-pointer on non-empty insertion. The table's domain semantics and the node fields' application-level meanings remain unknown.
 
 **Next target:** inspect `FUN_004ae797`, used by `FUN_004ae7b1` to query `DAT_00cafb9c` before insertion. Determine which fields are compared and what makes two candidates match; do not infer table lifecycle names from the data structure alone.
+
+### Primary-table candidate lookup: `FUN_004ae797` — one-shot probe run #47
+
+Evidence: [Actions run #47, ID 38782180985](https://github.com/rakmahefa/aoe-rea/actions/runs/38782180985); [artifact 11996292779](https://github.com/rakmahefa/aoe-rea/actions/runs/38782180985/artifacts/11996292779).
+
+- Ghidra reports a 127-byte body spread across three non-contiguous ranges: `0x4ae797–0x4ae7b0`, `0x4afeec–0x4aff3f`, and `0x4b2357–0x4b2367`. These ranges should be treated as an address set, not a single linear block.
+- The function receives an integer bucket index, a pointer to a float coordinate tuple, and a pointer to a table descriptor. It reads the bucket head at `*param_3 + param_1*4`; if the head is null, it immediately returns null.
+- Otherwise it compares candidate floats `[0]` and `[2]` to the query's `[0]` and `[2]`. It continues along the node's `+0x28` next pointer whenever either absolute coordinate difference is at least `1e-6`. A matching node is returned; reaching a null next pointer returns null.
+- Ghidra lists two callers: `FUN_004ae7b1` calls it at `0x4ae827` and `0x4ae843`, and `FUN_008caa04` calls it at `0x8caa68` and `0x8caa9d`. In both callers it is used to query `DAT_00cafb9c` and, if necessary, the separate `DAT_00cafba8` table.
+
+**Interpretation — strongly supported at the structural level:** each table is searched by a precomputed bucket and then by near-exact X/Z coordinate equality in its linked chain. This suggests candidate entries are position-associated. It does not establish the tables' business names, why two tables are needed, or the meaning of the third component used by the hash routine.
+
+**Next target:** inspect `FUN_004adea4`, which `FUN_008caa04` calls when neither table returns a matching candidate. Determine whether it allocates a node, pulls from a pool, or performs another initialization step.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
