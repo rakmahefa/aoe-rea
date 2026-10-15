@@ -339,7 +339,7 @@ Preuve : [run #48, ID 38783723125](https://github.com/rakmahefa/aoe-rea/actions/
 - Le bloc est transmis à `FUN_00401fa0(base, 0x34, taille_du_lot, &LAB_008ca934)`. La fonction enregistre ensuite le bloc et empile les pointeurs vers les éléments à pas fixe de `0x34` dans le stockage des objets libres ; elle renvoie le pointeur du premier élément. Les tableaux de suivi utilisent aussi `FUN_00401113`.
 - Ghidra liste comme appelants `FUN_004ae7b1`, `FUN_004b004e` et `FUN_008caa04`. Dans ce dernier, l'appelant remet ensuite à zéro 13 DWORDs avant d'initialiser un candidat. Cela concorde avec une réserve de mémoire réutilisable, mais ne prouve pas que le pool construit entièrement un objet métier.
 
-**Interprétation fortement étayée au niveau de la gestion mémoire :** allocateur de pool pour des enregistrements de taille fixe `0x34) octets, réutilisant d'abord les pointeurs libres puis allouant des lots de 100 par défaut. La disposition complète de son état, le rôle de `LAB_008ca934` et le nom original de ce mécanisme restent inconnus.
+**Interprétation fortement étayée au niveau de la gestion mémoire :** allocateur de pool pour des enregistrements de taille fixe `0x34` octets, réutilisant d'abord les pointeurs libres puis allouant des lots de 100 par défaut. La disposition complète de son état, le rôle de `LAB_008ca934` et le nom original de ce mécanisme restent inconnus.
 
 **Prochaine cible :** `FUN_00401fa0`, appelé avec l'adresse de base, le pas `0x34`, le nombre d'entrées et `LAB_008ca934`. Déterminer si cette fonction initialise chaque élément, enregistre une plage ou effectue les deux.
 
