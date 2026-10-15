@@ -271,7 +271,7 @@ Evidence: [Actions run #43, ID 38745133893](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation — strongly supported algorithm shape, not a recovered original name:** the heap priority has the form *accumulated path-like cost + Euclidean distance to a reference position*, which is compatible with an A*-style frontier score. The connection to path-related routines elsewhere makes that hypothesis plausible, but the exact field meanings, units, admissibility of the distance term, and full search algorithm have not been proven. Do not label the function definitively as A*.
 
-**Next target:** inspect `FUN_004aded1`, the insertion helper used when `FUN_008caa04` promotes a candidate from `DAT_00cafba8` into `DAT_00cafb9c` or creates a new candidate. Run #45 confirms that promotion path but not the tables' domain names or lifecycle semantics. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
+**Next target:** inspect `FUN_004ae797`, the lookup helper used by `FUN_004ae7b1` before candidate insertion. With run #46 now showing how a chain is appended to a bucket in `DAT_00cafb9c`, the lookup helper should clarify the matching fields and whether the hash is only a bucket selector. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
 
 ### Min-heap priority update: `FUN_004b1e94` — one-shot probe run #44
 
@@ -300,6 +300,21 @@ Evidence: [Actions run #45, ID 38774292963](https://github.com/rakmahefa/aoe-rea
 **Interpretation — observed mechanics, inferred lifecycle:** this looks like candidate reuse/promotion between two table-backed states plus a min-heap. It may fit a path-search frontier lifecycle, but the labels “open set” and “closed set” are not proven and must not be used as facts.
 
 **Next target:** inspect `FUN_004aded1` to establish how insertion into `DAT_00cafb9c` differs from the already observed chained insertion into `DAT_00cafba8`. Keep both globals distinct until the code shows more than a shared hash index.
+
+### Primary-table chain insertion: `FUN_004aded1` — one-shot probe run #46
+
+Evidence: [Actions run #46, ID 38775891857](https://github.com/rakmahefa/aoe-rea/actions/runs/38775891857); [artifact 11994206385](https://github.com/rakmahefa/aoe-rea/actions/runs/38775891857/artifacts/11994206385).
+
+- Ghidra reports a 78-byte body split across three ranges: `0x4aded1–0x4adef1`, `0x4b2368–0x4b2385`, and `0x5004bd–0x5004cb`. Treat the disjoint ranges as an address set, not a single linear instruction sequence.
+- The pseudocode reads a bucket head from `*param_3 + param_1*4`. If the bucket is empty, it stores `param_2` as the new head and returns.
+- For a non-empty bucket, it follows each node's `+0x28` next pointer to the chain tail, sets the tail's `+0x28` to `param_2`, writes the tail pointer into the new node's `+0x2c` previous field, clears the new node's `+0x28` next field, then returns.
+- Ghidra reports one direct caller, `FUN_008caa04`, at the call site `0x8cabb2`. The helper itself does not compute the hash; the caller supplies the integer bucket index and a pointer to the table/head array.
+- The empty-bucket path does not explicitly initialise the inserted node's link fields. Do not assume this helper clears them in every case; that may be the caller's responsibility or depend on the prior node state.
+- This insertion shape is consistent with the separately observed `FUN_004aefb7` insertion into `DAT_00cafba8` (run #39), but `DAT_00cafb9c` and `DAT_00cafba8` remain separate tables until more evidence connects their purpose.
+
+**Interpretation:** confirmed bucketed singly-traversed next-chain append with a previous-link back-pointer on non-empty insertion. The table's domain semantics and the node fields' application-level meanings remain unknown.
+
+**Next target:** inspect `FUN_004ae797`, used by `FUN_004ae7b1` to query `DAT_00cafb9c` before insertion. Determine which fields are compared and what makes two candidates match; do not infer table lifecycle names from the data structure alone.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
