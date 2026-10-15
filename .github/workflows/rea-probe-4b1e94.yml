@@ -1,4 +1,4 @@
-name: REA one-shot function probe
+name: REA one-shot heap-caller probe
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   inspect:
-    name: Inspect priority-update helper 0x4b1e94
+    name: Inspect alternate heap caller 0x8caa04
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -93,15 +93,15 @@ jobs:
         run: |
           set -euo pipefail
           target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
-          jq -n --arg target "$TARGET_RELATIVE_PATH" --arg sha256 "$target_sha" --arg commit "$GITHUB_SHA" --arg rea_version "$REA_VERSION" --arg ghidra_version "$GHIDRA_VERSION" --arg analysed_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" '{target_path:$target,target_sha256:$sha256,source_commit:$commit,rea_version:$rea_version,ghidra_version:$ghidra_version,analysed_at_utc:$analysed_at,purpose:"Static function dossier for FUN_004b1e94; not a Linux port or recompilation."}' > "$REPORT_DIR/metadata.json"
+          jq -n --arg target "$TARGET_RELATIVE_PATH" --arg sha256 "$target_sha" --arg commit "$GITHUB_SHA" --arg rea_version "$REA_VERSION" --arg ghidra_version "$GHIDRA_VERSION" --arg analysed_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" '{target_path:$target,target_sha256:$sha256,source_commit:$commit,rea_version:$rea_version,ghidra_version:$ghidra_version,analysed_at_utc:$analysed_at,purpose:"Static function dossier for FUN_008caa04; not a Linux port or recompilation."}' > "$REPORT_DIR/metadata.json"
 
-      - name: Analyze priority-update helper at 0x4b1e94
+      - name: Analyze alternate heap caller at 0x8caa04
         shell: bash
         run: |
           set -euo pipefail
-          rea function "$TARGET_PATH" "0x4b1e94" --provider ghidra --json > "$REPORT_DIR/function.json" 2> "$REPORT_DIR/function.stderr.log"
+          rea function "$TARGET_PATH" "0x8caa04" --provider ghidra --json > "$REPORT_DIR/function.json" 2> "$REPORT_DIR/function.stderr.log"
           jq -e . "$REPORT_DIR/function.json" > /dev/null
-          printf '%s\n' '- Function dossier at `0x4b1e94`: see `function.json`' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' '- Function dossier at `0x8caa04`: see `function.json`' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
         if: always()
