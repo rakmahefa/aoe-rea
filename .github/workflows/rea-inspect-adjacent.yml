@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rea-dossier-4aefe9
+  group: rea-dossier-4af120
   cancel-in-progress: false
 
 jobs:
@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Analyze candidate-key producer at 0x4aefe9
+      - name: Analyze selected-node update helper at 0x4af120
         shell: bash
         run: |
           set -euo pipefail
-          rea function "$TARGET_PATH" "0x4aefe9" --provider ghidra --json \
+          rea function "$TARGET_PATH" "0x4af120" --provider ghidra --json \
             > "$REPORT_DIR/function.json" \
             2> "$REPORT_DIR/function.stderr.log"
           jq -e . "$REPORT_DIR/function.json" > /dev/null
-          printf '%s\n' '- Function dossier at `0x4aefe9`: see `function.json`' \
+          printf '%s\n' '- Function dossier at `0x4af120`: see `function.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
