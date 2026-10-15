@@ -271,7 +271,7 @@ Evidence: [Actions run #43, ID 38745133893](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation — strongly supported algorithm shape, not a recovered original name:** the heap priority has the form *accumulated path-like cost + Euclidean distance to a reference position*, which is compatible with an A*-style frontier score. The connection to path-related routines elsewhere makes that hypothesis plausible, but the exact field meanings, units, admissibility of the distance term, and full search algorithm have not been proven. Do not label the function definitively as A*.
 
-**Next target:** inspect the other caller `FUN_008caa04` to determine whether it uses the same indexed heap-update contract. Run #44 establishes the core operation in `FUN_004b1e94`; the exact roles of the small helper calls on mismatches remain unconfirmed. Keep `FUN_00678a5f` as a secondary target for the `DAT_00cafba8` branch. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
+**Next target:** inspect `FUN_004aded1`, the insertion helper used when `FUN_008caa04` promotes a candidate from `DAT_00cafba8` into `DAT_00cafb9c` or creates a new candidate. Run #45 confirms that promotion path but not the tables' domain names or lifecycle semantics. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
 
 ### Min-heap priority update: `FUN_004b1e94` — one-shot probe run #44
 
@@ -285,6 +285,21 @@ Evidence: [Actions run #44, ID 38772710258](https://github.com/rakmahefa/aoe-rea
 - Ghidra lists callers `FUN_004ae7b1` and `FUN_008caa04`.
 
 **Interpretation — strong algorithmic evidence:** this is an in-place priority update with an upward heap repair, compatible with a *decrease-key* operation. In `FUN_004ae7b1`, the surrounding guard rejects a worse candidate before this update path, strengthening that interpretation. The actual meaning/units of the priority and bucket key remains unresolved. The next probe is `FUN_008caa04`, the other caller, to test whether the same contract appears in a second context.
+
+### Alternate heap caller and candidate promotion: `FUN_008caa04` — one-shot probe run #45
+
+Evidence: [Actions run #45, ID 38774292963](https://github.com/rakmahefa/aoe-rea/actions/runs/38774292963); [artifact 11993540489](https://github.com/rakmahefa/aoe-rea/actions/runs/38774292963/artifacts/11993540489).
+
+- Ghidra identifies a contiguous 459-byte body from `0x8caa04` to `0x8cabce`. Its caller is `FUN_00798815` at `0x798815`.
+- Like `FUN_004ae7b1`, it computes an index using `FUN_004aeee8` and `& 0x7ff`, then queries `DAT_00cafb9c` before `DAT_00cafba8`. The matching object is not treated as a heap entry itself; these are separate hash-table/chain structures.
+- If the primary table contains a candidate, the function records the old combined key `+0x14 + +0x18 + +0x1c`, refreshes its fields, recomputes the combined float priority, and calls `FUN_004b1e94` with the bucket key and old/new priorities.
+- If only `DAT_00cafba8` contains a matching candidate and its `+0x14` field passes the score guard, the function unlinks that node via `FUN_004af120`, reuses it, and takes the promotion path into `DAT_00cafb9c` and the heap. A candidate absent from both tables is allocated/obtained through `FUN_004adea4` and initialized.
+- For a new/promoted candidate, the main-table path calls `FUN_004aded1` and then `FUN_004afb4c` to insert the computed score/key pair into the min-heap. The alternate score mode can use `FUN_004237e5`; its exact geometric meaning is not yet verified.
+- The function writes coordinate and score-related fields at offsets `+0x00`–`+0x1c` and resets several other fields. Their complete domain meanings remain unknown.
+
+**Interpretation — observed mechanics, inferred lifecycle:** this looks like candidate reuse/promotion between two table-backed states plus a min-heap. It may fit a path-search frontier lifecycle, but the labels “open set” and “closed set” are not proven and must not be used as facts.
+
+**Next target:** inspect `FUN_004aded1` to establish how insertion into `DAT_00cafb9c` differs from the already observed chained insertion into `DAT_00cafba8`. Keep both globals distinct until the code shows more than a shared hash index.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
