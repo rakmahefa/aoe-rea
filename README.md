@@ -271,7 +271,7 @@ Evidence: [Actions run #43, ID 38745133893](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation — strongly supported algorithm shape, not a recovered original name:** the heap priority has the form *accumulated path-like cost + Euclidean distance to a reference position*, which is compatible with an A*-style frontier score. The connection to path-related routines elsewhere makes that hypothesis plausible, but the exact field meanings, units, admissibility of the distance term, and full search algorithm have not been proven. Do not label the function definitively as A*.
 
-**Next target:** inspect `FUN_004adea4`, called by `FUN_008caa04` when no matching candidate is found in either table, to establish what it allocates or returns. Run #47 now establishes that `FUN_004ae797` matches a candidate by its X/Z coordinates within a `1e-6` absolute tolerance in the selected bucket. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
+**Next target:** inspect `FUN_00401fa0`, called by the pool-like allocator `FUN_004adea4` to initialize a batch of fixed-size entries via callback `LAB_008ca934`. Run #48 shows the pool allocates `0x34` bytes per entry and defaults to batches of 100, but the callback's role and object-field initialization are not yet proven. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
 
 ### Min-heap priority update: `FUN_004b1e94` — one-shot probe run #44
 
@@ -328,6 +328,20 @@ Evidence: [Actions run #47, ID 38782180985](https://github.com/rakmahefa/aoe-rea
 **Interpretation — strongly supported at the structural level:** each table is searched by a precomputed bucket and then by near-exact X/Z coordinate equality in its linked chain. This suggests candidate entries are position-associated. It does not establish the tables' business names, why two tables are needed, or the meaning of the third component used by the hash routine.
 
 **Next target:** inspect `FUN_004adea4`, which `FUN_008caa04` calls when neither table returns a matching candidate. Determine whether it allocates a node, pulls from a pool, or performs another initialization step.
+
+### Candidate-record pool allocator: `FUN_004adea4` — one-shot probe run #48
+
+Evidence: [Actions run #48, ID 38783723125](https://github.com/rakmahefa/aoe-rea/actions/runs/38783723125); [artifact 11996853539](https://github.com/rakmahefa/aoe-rea/actions/runs/38783723125/artifacts/11996853539).
+
+- Ghidra reports a 254-byte body in two non-contiguous ranges: `0x4adea4–0x4aded0` and `0x67897f–0x678a4f`. The distant range is part of the reported body set, not a continuation to read linearly from the entry.
+- The function uses the ECX-referenced state. If its available-object count (`in_ECX[5]`) is positive, it returns the last pointer from the available-pointer array (`in_ECX[4]`) after requesting a count reduction through `FUN_00401113(count-1, 0)`.
+- If no object is available, it chooses the configured batch size (`*in_ECX`), defaulting it to 100 if the value is below one. It allocates `batch_size * 0x34` bytes through `FUN_00401398`; allocation failure returns null.
+- It passes the returned block to `FUN_00401fa0(base, 0x34, batch_size, &LAB_008ca934)`, then registers the block and adds pointers to the fixed-stride records (`+0x34` each) to the available-pointer storage. The first record's pointer is returned; bookkeeping/growth paths use `FUN_00401113`.
+- The function is called by `FUN_004ae7b1`, `FUN_008caa04`, and `FUN_004b004e`. In `FUN_008caa04`, the caller subsequently zeroes 13 DWORDs before initializing a fresh candidate, which is consistent with reuse of generic fixed-size storage rather than proof that this helper fully constructs a domain object.
+
+**Interpretation — strong allocator-shape evidence:** this behaves like a pool for fixed-size `0x34)-byte records, allocating them in batches of 100 by default and returning recycled pointers before allocating new storage. The exact state layout and the role of `LAB_008ca934` remain unresolved; do not yet claim a specific C++ class or original allocator name.
+
+**Next target:** inspect `FUN_00401fa0`, which receives the block base, stride `0x34`, batch count and callback address `LAB_008ca934`. Determine what initialization/registration occurs for each record.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
