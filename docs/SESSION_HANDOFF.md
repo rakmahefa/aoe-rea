@@ -284,7 +284,7 @@ Preuve : [run #44, ID 38772710258](https://github.com/rakmahefa/aoe-rea/actions/
 
 **Interprétation forte au niveau algorithmique :** il s'agit d'une mise à jour en place de la priorité, suivie d'une réparation ascendante du tas, compatible avec une opération de type *decrease-key*. Dans `FUN_004ae7b1`, la garde environnante rejette un candidat moins avantageux avant d'atteindre cette mise à jour, ce qui renforce cette lecture. La signification métier exacte et les unités des deux DWORD restent inconnues.
 
-**Prochaine cible après le run #47 :** `FUN_004adea4`, appelée si les recherches coordonnées dans `DAT_00cafb9c` et `DAT_00cafba8` échouent. La sonde doit déterminer ce que renvoie ce helper de création/obtention de nœud. La piste géométrie/obstruction/occupation des runs #20–23 reste séparée.
+**Rappel chronologique :** le run #45, décrit juste après, a examiné l'autre appelant `FUN_008caa04`.
 
 ### Dossier du second appelant du tas — `FUN_008caa04` (sonde ponctuelle #45)
 
@@ -295,7 +295,7 @@ Preuve : [run #45, ID 38774292963](https://github.com/rakmahefa/aoe-rea/actions/
 - Si la table principale contient un candidat, elle conserve l'ancien score combiné `+0x14 + +0x18 + +0x1c`, actualise les champs du nœud, recalcule une priorité flottante, puis appelle `FUN_004b1e94` avec la clé de compartiment et les priorités ancienne/nouvelle.
 - Si seul `DAT_00cafba8` contient un candidat compatible avec la garde de score, la fonction retire le nœud avec `FUN_004af120`, le réutilise, et suit un chemin de promotion vers `DAT_00cafb9c` et le tas. Si aucun candidat réutilisable n'est trouvé, elle obtient/initialise un nœud via `FUN_004adea4`.
 - Le chemin nouveau/promu appelle `FUN_004aded1` pour l'entrée dans `DAT_00cafb9c`, puis `FUN_004afb4c` pour insérer la paire score/clé dans le tas min. Dans un mode, `FUN_004237e5` calcule une valeur géométrique à préciser.
-- La procédure écrit plusieurs champs à `+0x00)–`+0x1c` et réinitialise d'autres champs. Le sens métier complet des champs n'est pas résolu.
+- La procédure écrit plusieurs champs de `+0x00` à `+0x1c` et réinitialise d'autres champs. Le sens métier complet des champs n'est pas résolu.
 
 **Interprétation :** ces opérations sont compatibles avec la réutilisation/la promotion de candidats entre deux états stockés par table, avec un tas min pour la priorité. Une piste de recherche de chemin est plausible, mais les noms « open set » et « closed set » ne sont pas établis.
 
@@ -307,14 +307,14 @@ Preuve : [run #46, ID 38775891857](https://github.com/rakmahefa/aoe-rea/actions/
 
 - Ghidra rapporte un corps de 78 octets réparti sur trois plages : `0x4aded1–0x4adef1`, `0x4b2368–0x4b2385` et `0x5004bd–0x5004cb`. Les segments disjoints ne doivent pas être lus comme un bloc linéaire.
 - Le pseudocode lit la tête du compartiment depuis `*param_3 + param_1*4`. Si le compartiment est vide, il écrit `param_2` comme nouvelle tête et retourne.
-- Si le compartiment n'est pas vide, il suit les pointeurs suivants `+0x28` jusqu'à la fin de la chaîne, met le champ `+0x28` de la queue à `param_2`, écrit l'ancien nœud de queue dans le champ précédent `+0x2c` du nouveau nœud et efface le pointeur suivant `+0x28) du nouveau nœud.
+- Si le compartiment n'est pas vide, il suit les pointeurs suivants `+0x28` jusqu'à la fin de la chaîne, met le champ `+0x28` de la queue à `param_2`, écrit l'ancien nœud de queue dans le champ précédent `+0x2c` du nouveau nœud et efface le pointeur suivant `+0x28` du nouveau nœud.
 - Ghidra ne rapporte qu'un appelant direct, `FUN_008caa04`, à l'adresse d'appel `0x8cabb2`. Le helper ne calcule pas le hash : l'appelant fournit l'indice de compartiment et le pointeur de la table/tableau de têtes.
 - Sur la branche compartiment vide, le helper n'initialise pas explicitement les liens du nœud inséré. Ne pas supposer qu'il efface toujours ces champs : l'initialisation peut dépendre de l'appelant ou de l'état antérieur du nœud.
 - La forme ressemble à l'insertion dans la table distincte `DAT_00cafba8` effectuée par `FUN_004aefb7` (run #39), mais les deux tables doivent rester séparées faute de preuve sur leur rôle métier.
 
 **Interprétation :** ajout confirmé en queue d'une chaîne de compartiment en parcourant des pointeurs `next`, avec un lien `previous` renseigné lors d'un ajout non vide. Le sens métier de la table et des champs reste inconnu.
 
-**Prochaine cible après le run #47 :** `FUN_004adea4`, appelée par `FUN_008caa04` lorsque les recherches coordonnées dans les deux tables ne trouvent aucun candidat. Déterminer son rôle avant d'inférer davantage de sémantique métier.
+**Prochaine cible à l'issue du run #46 :** `FUN_004ae797`, le helper de recherche en compartiment. Le résultat de sa sonde est décrit dans le dossier #47 ci-dessous.
 
 ### Dossier de recherche d'un candidat par coordonnées — `FUN_004ae797` (sonde ponctuelle #47)
 
@@ -327,7 +327,7 @@ Preuve : [run #47, ID 38782180985](https://github.com/rakmahefa/aoe-rea/actions/
 
 **Interprétation structurelle fortement étayée :** chaque table est recherchée par un indice de compartiment préalablement calculé, puis par égalité des coordonnées X/Z avec une tolérance absolue de `1e-6` dans une chaîne liée. Cela suggère des nœuds associés à des positions. Ce n'est pas une preuve des noms métier des tables, de la raison des deux structures ni du sens de la troisième composante fournie au calcul de hachage.
 
-**Prochaine cible :** `FUN_004adea4`, appelée par `FUN_008caa04) quand aucune des deux tables ne contient de candidat correspondant. Déterminer si elle alloue un nœud, le retire d'un pool ou effectue une autre opération.
+**Prochaine cible après le run #47 :** `FUN_004adea4`, appelée par `FUN_008caa04` quand aucune des deux tables ne contient de candidat correspondant. Déterminer si elle alloue un nœud, le retire d'un pool ou effectue une autre opération.
 
 ### Faits vs hypothèses
 
