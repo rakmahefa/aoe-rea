@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rea-probe-87157b
+  group: rea-dossier-87157b
   cancel-in-progress: false
 
 jobs:
@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Inspect native instruction at 0x87157b
+      - name: Analyze direct callee procedure at 0x87157b
         shell: bash
         run: |
           set -euo pipefail
-          rea inspect-native-instruction "$TARGET_PATH" "0x87157b" --provider ghidra --json \
-            > "$REPORT_DIR/instruction.json" \
-            2> "$REPORT_DIR/instruction.stderr.log"
-          jq -e . "$REPORT_DIR/instruction.json" > /dev/null
-          printf '%s\n' '- Native instruction at `0x87157b`: see `instruction.json`' \
+          rea function "$TARGET_PATH" "0x87157b" --provider ghidra --json \
+            > "$REPORT_DIR/function.json" \
+            2> "$REPORT_DIR/function.stderr.log"
+          jq -e . "$REPORT_DIR/function.json" > /dev/null
+          printf '%s\n' '- Function dossier at `0x87157b`: see `function.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
