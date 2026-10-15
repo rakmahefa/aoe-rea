@@ -339,7 +339,7 @@ Evidence: [Actions run #48, ID 38783723125](https://github.com/rakmahefa/aoe-rea
 - It passes the returned block to `FUN_00401fa0(base, 0x34, batch_size, &LAB_008ca934)`, then registers the block and adds pointers to the fixed-stride records (`+0x34` each) to the available-pointer storage. The first record's pointer is returned; bookkeeping/growth paths use `FUN_00401113`.
 - The function is called by `FUN_004ae7b1`, `FUN_008caa04`, and `FUN_004b004e`. In `FUN_008caa04`, the caller subsequently zeroes 13 DWORDs before initializing a fresh candidate, which is consistent with reuse of generic fixed-size storage rather than proof that this helper fully constructs a domain object.
 
-**Interpretation — strong allocator-shape evidence:** this behaves like a pool for fixed-size `0x34)-byte records, allocating them in batches of 100 by default and returning recycled pointers before allocating new storage. The exact state layout and the role of `LAB_008ca934` remain unresolved; do not yet claim a specific C++ class or original allocator name.
+**Interpretation — strong allocator-shape evidence:** this behaves like a pool for fixed-size `0x34`-byte records, allocating them in batches of 100 by default and returning recycled pointers before allocating new storage. The exact state layout and the role of `LAB_008ca934` remain unresolved; do not yet claim a specific C++ class or original allocator name.
 
 **Next target:** inspect `FUN_00401fa0`, which receives the block base, stride `0x34`, batch count and callback address `LAB_008ca934`. Determine what initialization/registration occurs for each record.
 
