@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rea-dossier-799898
+  group: rea-dossier-798815
   cancel-in-progress: false
 
 jobs:
@@ -116,15 +116,15 @@ jobs:
               purpose: "Single-address static native instruction inspection; not a Linux port or recompilation."
             }' > "$REPORT_DIR/metadata.json"
 
-      - name: Analyze helper procedure at 0x799898
+      - name: Analyze delegated helper procedure at 0x798815
         shell: bash
         run: |
           set -euo pipefail
-          rea function "$TARGET_PATH" "0x799898" --provider ghidra --json \
+          rea function "$TARGET_PATH" "0x798815" --provider ghidra --json \
             > "$REPORT_DIR/function.json" \
             2> "$REPORT_DIR/function.stderr.log"
           jq -e . "$REPORT_DIR/function.json" > /dev/null
-          printf '%s\n' '- Function dossier at `0x799898`: see `function.json`' \
+          printf '%s\n' '- Function dossier at `0x798815`: see `function.json`' \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload REA analysis report
