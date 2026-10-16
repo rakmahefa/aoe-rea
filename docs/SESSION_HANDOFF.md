@@ -375,11 +375,11 @@ Preuve : [run #50, ID 38852450383](https://github.com/rakmahefa/aoe-rea/actions/
 
 Preuve : [run #52, ID 38853201623](https://github.com/rakmahefa/aoe-rea/actions/runs/38853201623) ; [artefact 12025469262](https://github.com/rakmahefa/aoe-rea/actions/runs/38853201623/artifacts/12025469262).
 
-- La sonde native décode les octets `8b c1` à `0x8ca934` en `MOV EAX,ECX), longueur deux octets, `FALL_THROUGH), avec `procedure=null`.
-- Dans le contexte établi par les runs #49–50, `ECX` porte l'adresse du record courant au transfert dans le callback. Cette instruction copie ce pointeur dans `EAX); elle ne prouve pas l'initialisation d'un champ ni la sémantique métier du record.
+- La sonde native décode les octets `8b c1` à `0x8ca934` en `MOV EAX,ECX`, longueur deux octets, `FALL_THROUGH`, avec `procedure=null`.
+- Dans le contexte établi par les runs #49–50, `ECX` porte l'adresse du record courant au transfert dans le callback. Cette instruction copie ce pointeur dans `EAX`; elle ne prouve pas l'initialisation d'un champ ni la sémantique métier du record.
 - Ghidra ne reconnaît pas `0x8ca934` comme entrée de procédure dans cette sonde. Le traiter comme label/bloc de code tant qu'une analyse de corps plus large n'en établit pas la frontière.
 
-**Prochaine cible :** `0x8ca936), adresse séquentielle après cette instruction de deux octets. Continuer de suivre les appels, sauts et retours effectivement décodés.
+**Prochaine cible :** `0x8ca936`, adresse séquentielle après cette instruction de deux octets. Continuer de suivre les appels, sauts et retours effectivement décodés.
 
 ### Faits vs hypothèses
 
