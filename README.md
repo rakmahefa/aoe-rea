@@ -271,7 +271,7 @@ Evidence: [Actions run #43, ID 38745133893](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation — strongly supported algorithm shape, not a recovered original name:** the heap priority has the form *accumulated path-like cost + Euclidean distance to a reference position*, which is compatible with an A*-style frontier score. The connection to path-related routines elsewhere makes that hypothesis plausible, but the exact field meanings, units, admissibility of the distance term, and full search algorithm have not been proven. Do not label the function definitively as A*.
 
-**Next target:** inspect `FUN_00401fa0`, called by the pool-like allocator `FUN_004adea4` to initialize a batch of fixed-size entries via callback `LAB_008ca934`. Run #48 shows the pool allocates `0x34` bytes per entry and defaults to batches of 100, but the callback's role and object-field initialization are not yet proven. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
+**Next target:** inspect the two-byte helper at `FUN_00401fd6`, reached once per record by `FUN_00401fa0`. Run #49 establishes that the loop passes the current record address in `ECX` and the callback pointer in `EAX`; the helper's exact indirect transfer instruction must confirm how the callback is invoked. Keep `FUN_00678a5f` as a secondary target for the alternate path in `FUN_004ae7b1`. The geometry/obstruction/occupancy evidence from runs #20–23 remains a separate track.
 
 ### Min-heap priority update: `FUN_004b1e94` — one-shot probe run #44
 
@@ -342,6 +342,20 @@ Evidence: [Actions run #48, ID 38783723125](https://github.com/rakmahefa/aoe-rea
 **Interpretation — strong allocator-shape evidence:** this behaves like a pool for fixed-size `0x34`-byte records, allocating them in batches of 100 by default and returning recycled pointers before allocating new storage. The exact state layout and the role of `LAB_008ca934` remain unresolved; do not yet claim a specific C++ class or original allocator name.
 
 **Next target:** inspect `FUN_00401fa0`, which receives the block base, stride `0x34`, batch count and callback address `LAB_008ca934`. Determine what initialization/registration occurs for each record.
+
+### Fixed-record callback loop: `FUN_00401fa0` — one-shot probe run #49
+
+Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea/actions/runs/38785347582); [artifact 11998191528](https://github.com/rakmahefa/aoe-rea/actions/runs/38785347582/artifacts/11998191528).
+
+- Ghidra reports a contiguous 54-byte body from `0x401fa0` through `0x401fd5`. The returned pseudocode declares three arguments, but the epilogue is `RET 0x10` and the body reads a fourth stack argument. The inferred Ghidra signature is therefore incomplete: the machine code consumes four stack arguments.
+- The function reads the count from entry-stack offset `+0x0c`, exits when the count is non-positive, and otherwise iterates exactly that many times.
+- On each iteration it places the current element address in `ECX`, places the fourth argument in `EAX`, and calls the short helper at `0x401fd6`. It then advances the element address by the second argument (the stride) and repeats.
+- In context, `FUN_004adea4` passes a base pointer, stride `0x34), batch count and `LAB_008ca934`. The observed data flow therefore supports a generic *for-each fixed-stride record callback* loop: `ECX` is the current record address and `EAX` carries the callback target into `FUN_00401fd6`.
+- The current dossier only identifies `FUN_00401fd6` as a two-byte body; it does not expose its instruction bytes in this run. Do not yet state whether it performs `CALL EAX`, `JMP EAX` or another transfer until that address is probed directly.
+
+**Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0). The exact callback semantics and the role of `LAB_008ca934) remain unknown.
+
+**Next target:** probe the exact instruction at `0x401fd6` to resolve the callback transfer mechanism, then probe `LAB_008ca934` if the indirect target is confirmed.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
