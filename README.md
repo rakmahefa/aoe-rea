@@ -355,7 +355,7 @@ Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0`. The exact callback semantics and the role of `LAB_008ca934` remain unknown.
 
-**Result of run #53:** `0x8ca936` decodes to `XOR ECX,ECX` (`33 c9`, two bytes, `FALL_THROUGH`, `procedure=null`). Together with run #52's `MOV EAX,ECX`, the observed sequence first copies the record pointer into `EAX`, then clears `ECX`; the callback's semantic purpose is still unknown. **Next target:** inspect `0x8ca938`.
+**Result of run #54:** `0x8ca938` decodes to `MOV dword ptr [EAX + 0x2c],ECX` (`89 48 2c`, three bytes, `FALL_THROUGH`, `procedure=null`). The sequence copies the record pointer into `EAX`, clears `ECX`, then writes zero to record offset `+0x2c`. Earlier list routines use `+0x2c` as a previous-link field, so the store is consistent with clearing that link; the callback's overall purpose is not proven. **Next target:** inspect `0x8ca93b`.
 
 ### Callback transfer thunk: `0x401fd6` — one-shot probe run #50
 
@@ -380,17 +380,28 @@ Evidence: [Actions run #52, ID 38853201623](https://github.com/rakmahefa/aoe-rea
 - In the context established by runs #49–50, `ECX` carries the current record pointer into the callback. This instruction copies that pointer to `EAX`; it does not by itself establish any field initialization or business meaning.
 - Ghidra does not recognize `0x8ca934` as a procedure entry for this probe. Treat it as a code label/internal block unless a later function-body analysis establishes a broader procedure boundary.
 
-**Next target:** probe `0x8ca936`, the sequential address after this two-byte instruction. Continue following decoded calls, branches and returns rather than assuming a linear function body.
+**Chronological note after run #52:** the immediate next address was `0x8ca936`; runs #53–54 have now decoded the continuation through `0x8ca93a`. The current target is `0x8ca93b`.
 
 ### Callback continuation: clear of `ECX` at `0x8ca936` — one-shot probe run #53
 
 Evidence: [Actions run #53, ID 38853803910](https://github.com/rakmahefa/aoe-rea/actions/runs/38853803910); [artifact 12026795710](https://github.com/rakmahefa/aoe-rea/actions/runs/38853803910/artifacts/12026795710).
 
-- The native probe decodes bytes `33 c9` at `0x8ca936` as `XOR ECX,ECX`, length two, `FALL_THROUGH), with `procedure=null`.
-- The preceding instruction from run #52 is `MOV EAX,ECX` at `0x8ca934`. The observed pair therefore copies the record pointer to `EAX), then clears `ECX). This is register data flow only: it does not establish that a field is cleared or reveal the intended callback operation.
+- The native probe decodes bytes `33 c9` at `0x8ca936` as `XOR ECX,ECX`, length two, `FALL_THROUGH`, with `procedure=null`.
+- The preceding instruction from run #52 is `MOV EAX,ECX` at `0x8ca934`. The observed pair therefore copies the record pointer to `EAX`, then clears `ECX`. This is register data flow only: it does not establish that a field is cleared or reveal the intended callback operation.
 - The procedure boundary remains unresolved at both addresses. Keep following sequentially until a decoded branch, call, return, or procedure boundary provides stronger evidence.
 
-**Next target:** inspect `0x8ca938), the next sequential address after the two-byte `XOR ECX,ECX` instruction.
+**Result of run #54:** `0x8ca938` decodes to `MOV dword ptr [EAX + 0x2c],ECX` (`89 48 2c`, three bytes, `FALL_THROUGH`, `procedure=null`). In the context of runs #52–53, it writes zero at record offset `+0x2c`. Prior list routines associate that offset with a previous-link field, which makes clearing the link plausible but not a proven business-level interpretation. **Next target:** inspect `0x8ca93b`.
+
+### Callback continuation: clear a record link at `0x8ca938` — one-shot probe run #54
+
+Evidence: [Actions run #54, ID 38854422589](https://github.com/rakmahefa/aoe-rea/actions/runs/38854422589); [artifact 12026542570](https://github.com/rakmahefa/aoe-rea/actions/runs/38854422589/artifacts/12026542570).
+
+- The native probe decodes bytes `89 48 2c` at `0x8ca938` as `MOV dword ptr [EAX + 0x2c],ECX`, length three bytes, `FALL_THROUGH`, with `procedure=null`.
+- Combining runs #52–54, the observed sequence is `MOV EAX,ECX` at `0x8ca934`, `XOR ECX,ECX` at `0x8ca936`, then a DWORD store of `ECX` to `[EAX+0x2c]` at `0x8ca938`. The register flow supports that zero is written at offset `+0x2c` of the record pointer copied to `EAX`.
+- Earlier list-handling probes associate node offset `+0x2c` with a previous/back-link field. The instruction is therefore consistent with clearing that link as part of record initialization. This structural comparison is an interpretation; the callback's full intent remains unproven.
+- Ghidra still reports `procedure=null` at this address. Do not conclude that the callback is already an independently identified function entry.
+
+**Next target:** inspect `0x8ca93b`, the next sequential address after this three-byte instruction.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
