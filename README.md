@@ -350,10 +350,10 @@ Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea
 - Ghidra reports a contiguous 54-byte body from `0x401fa0` through `0x401fd5`. The returned pseudocode declares three arguments, but the epilogue is `RET 0x10` and the body reads a fourth stack argument. The inferred Ghidra signature is therefore incomplete: the machine code consumes four stack arguments.
 - The function reads the count from entry-stack offset `+0x0c`, exits when the count is non-positive, and otherwise iterates exactly that many times.
 - On each iteration it places the current element address in `ECX`, places the fourth argument in `EAX`, and calls the short helper at `0x401fd6`. It then advances the element address by the second argument (the stride) and repeats.
-- In context, `FUN_004adea4` passes a base pointer, stride `0x34), batch count and `LAB_008ca934`. The observed data flow therefore supports a generic *for-each fixed-stride record callback* loop: `ECX` is the current record address and `EAX` carries the callback target into `FUN_00401fd6`.
-- The current dossier only identifies `FUN_00401fd6` as a two-byte body; it does not expose its instruction bytes in this run. Do not yet state whether it performs `CALL EAX`, `JMP EAX` or another transfer until that address is probed directly.
+- In context, `FUN_004adea4` passes a base pointer, stride `0x34`, batch count and `LAB_008ca934`. The observed data flow therefore supports a generic *for-each fixed-stride record callback* loop: `ECX` is the current record address and `EAX` carries the callback target into `FUN_00401fd6`.
+- At the time of run #49, the function dossier identified a two-byte helper but did not include its instruction bytes. Follow-up native probe #50 decoded that exact address as `JMP EAX`; the separate function-level dossier from run #51 explains why the direct instruction result matters (see below).
 
-**Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0). The exact callback semantics and the role of `LAB_008ca934) remain unknown.
+**Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0`. The exact callback semantics and the role of `LAB_008ca934` remain unknown.
 
 **Next target:** inspect the callback entry at `LAB_008ca934` (`0x8ca934`) now that run #50 confirms the transfer is an indirect `JMP EAX`. Follow its instructions and calls without assuming the label is a procedure entry.
 
@@ -362,9 +362,11 @@ Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea
 Evidence: [Actions run #50, ID 38852450383](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383); [artifact 12025552949](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383/artifacts/12025552949).
 
 - The native-instruction probe decodes bytes `ff e0` at `0x401fd6` as `JMP EAX`, length two, with an unconditional computed-jump flow and no direct destination.
-- This confirms the data flow inferred from run #49: `FUN_00401fa0` loads the fourth stack argument into `EAX), puts the current fixed-stride record address in `ECX), and calls `0x401fd6`. The two-byte helper immediately jumps to the callback pointer, so each callback executes with the current record address in `ECX).
+- This confirms the data flow inferred from run #49: `FUN_00401fa0` loads the fourth stack argument into `EAX`, puts the current fixed-stride record address in `ECX`, and calls `0x401fd6`. The two-byte helper immediately jumps to the callback pointer, so each callback executes with the current record address in `ECX`.
 - Because this is a tail jump, the callback's eventual return goes back to the return address pushed by `CALL 0x401fd6` at `0x401fc3` (the continuation at `0x401fc8`), assuming the callback returns normally.
-- The instruction has no direct destination encoded; the actual callee depends on the runtime value passed in `EAX). For the pool path in `FUN_004adea4`, that value is `LAB_008ca934).
+- The instruction has no direct destination encoded; the actual callee depends on the runtime value passed in `EAX`. For the pool path in `FUN_004adea4`, that value is `LAB_008ca934`.
+
+- A separate function-level dossier for `FUN_00401fd6` in [run #51](https://github.com/rakmahefa/aoe-rea/actions/runs/38852714545) ([artifact 12025049050](https://github.com/rakmahefa/aoe-rea/actions/runs/38852714545/artifacts/12025049050)) emits a decompiler warning that it could not recover the jump table and renders the indirect transfer as a call plus return. Do not treat that synthetic pseudocode return as machine control flow: run #50's native bytes `ff e0` and flow type explicitly show `JMP EAX`.
 
 **Interpretation, now confirmed at the control-flow level:** `FUN_00401fa0` iterates over the block and dispatches a callback for each record through an indirect tail jump. The callback's field-level behavior remains unknown until its entry is traced.
 
