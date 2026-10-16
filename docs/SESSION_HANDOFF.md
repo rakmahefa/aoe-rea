@@ -408,11 +408,11 @@ Preuve : [run #54, ID 38854422589](https://github.com/rakmahefa/aoe-rea/actions/
 Preuve : [run #56, ID 38855936196](https://github.com/rakmahefa/aoe-rea/actions/runs/38855936196) ; [artefact 12027357090](https://github.com/rakmahefa/aoe-rea/actions/runs/38855936196/artifacts/12027357090).
 
 - La sonde native décode les octets `89 48 28` à `0x8ca93b` en `MOV dword ptr [EAX + 0x28],ECX`, longueur trois octets, `FALL_THROUGH`, avec `procedure=null`.
-- En combinant les runs #52–56, la séquence copie le pointeur du record de `ECX` vers `EAX`, efface `ECX), puis écrit zéro à `[EAX+0x2c]` à `0x8ca938) et à `[EAX+0x28]` à `0x8ca93b`.
+- En combinant les runs #52–56, la séquence copie le pointeur du record de `ECX` vers `EAX`, efface `ECX`, puis écrit zéro à `[EAX+0x2c]` à `0x8ca938` et à `[EAX+0x28]` à `0x8ca93b`.
 - Les routines de listes antérieurement sondées utilisent `+0x28` comme lien avant/suivant et `+0x2c` comme lien arrière/précédent. Les deux stores sont donc compatibles avec le nettoyage des deux liens d'un record détaché ou neuf. Cela reste une hypothèse structurelle; le but complet du callback n'est pas prouvé.
 - Le run #55 ([Actions run ID 38854789080](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080), artefact [12026372536](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080/artifacts/12026372536)) n'a pas récupéré de corps de fonction : `rea function 0x8ca934` renvoie `No procedure exists at the requested address`. Les sondes séquentielles restent la base de preuve, avec `procedure=null`.
 
-**Prochaine cible :** inspecter `0x8ca93e), adresse séquentielle après le store de trois octets.
+**Prochaine cible :** inspecter `0x8ca93e`, adresse séquentielle après le store de trois octets.
 
 ### Faits vs hypothèses
 
