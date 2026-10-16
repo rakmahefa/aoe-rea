@@ -355,7 +355,20 @@ Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0). The exact callback semantics and the role of `LAB_008ca934) remain unknown.
 
-**Next target:** probe the exact instruction at `0x401fd6` to resolve the callback transfer mechanism, then probe `LAB_008ca934` if the indirect target is confirmed.
+**Next target:** inspect the callback entry at `LAB_008ca934` (`0x8ca934`) now that run #50 confirms the transfer is an indirect `JMP EAX`. Follow its instructions and calls without assuming the label is a procedure entry.
+
+### Callback transfer thunk: `0x401fd6` — one-shot probe run #50
+
+Evidence: [Actions run #50, ID 38852450383](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383); [artifact 12025552949](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383/artifacts/12025552949).
+
+- The native-instruction probe decodes bytes `ff e0` at `0x401fd6` as `JMP EAX`, length two, with an unconditional computed-jump flow and no direct destination.
+- This confirms the data flow inferred from run #49: `FUN_00401fa0` loads the fourth stack argument into `EAX), puts the current fixed-stride record address in `ECX), and calls `0x401fd6`. The two-byte helper immediately jumps to the callback pointer, so each callback executes with the current record address in `ECX).
+- Because this is a tail jump, the callback's eventual return goes back to the return address pushed by `CALL 0x401fd6` at `0x401fc3` (the continuation at `0x401fc8`), assuming the callback returns normally.
+- The instruction has no direct destination encoded; the actual callee depends on the runtime value passed in `EAX). For the pool path in `FUN_004adea4`, that value is `LAB_008ca934).
+
+**Interpretation, now confirmed at the control-flow level:** `FUN_00401fa0` iterates over the block and dispatches a callback for each record through an indirect tail jump. The callback's field-level behavior remains unknown until its entry is traced.
+
+**Next target:** inspect native instructions at `0x8ca934`, the callback label passed by `FUN_004adea4). Determine whether this address is a function entry or an internal basic block, then follow its actual control flow.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
