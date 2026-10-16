@@ -393,11 +393,11 @@ Evidence: [Actions run #53, ID 38853803910](https://github.com/rakmahefa/aoe-rea
 Evidence: [Actions run #56, ID 38855936196](https://github.com/rakmahefa/aoe-rea/actions/runs/38855936196); [artifact 12027357090](https://github.com/rakmahefa/aoe-rea/actions/runs/38855936196/artifacts/12027357090).
 
 - The native probe decodes bytes `89 48 28` at `0x8ca93b` as `MOV dword ptr [EAX + 0x28],ECX`, length three bytes, `FALL_THROUGH`, with `procedure=null`.
-- Runs #52–56 give this register/store sequence at the callback label: copy the incoming record pointer from `ECX) to `EAX) at `0x8ca934`; clear `ECX) at `0x8ca936); write zero to `[EAX+0x2c]` at `0x8ca938); and write zero to `[EAX+0x28]` at `0x8ca93b).
+- Runs #52–56 give this register/store sequence at the callback label: copy the incoming record pointer from `ECX` to `EAX` at `0x8ca934`; clear `ECX` at `0x8ca936`; write zero to `[EAX+0x2c]` at `0x8ca938`; and write zero to `[EAX+0x28]` at `0x8ca93b`.
 - Earlier list-handling functions use `+0x28` as a forward/next pointer and `+0x2c` as a previous/back pointer. The two stores are therefore consistent with clearing both links on a detached/fresh record. This is a structural hypothesis, not proof of the callback's full initialization behavior or domain purpose.
 - Ghidra continues to report `procedure=null` for these instruction addresses. Run #55's function-level request at `0x8ca934` failed with `No procedure exists at the requested address`; no function body was recovered.
 
-**Next target:** inspect `0x8ca93e), the sequential address after the three-byte store.
+**Next target:** inspect `0x8ca93e`, the sequential address after the three-byte store.
 
 ### Callback continuation: clear a record link at `0x8ca938` — one-shot probe run #54
 
@@ -408,8 +408,6 @@ Evidence: [Actions run #54, ID 38854422589](https://github.com/rakmahefa/aoe-rea
 - Earlier list-handling probes associate node offset `+0x2c` with a previous/back-link field. The instruction is therefore consistent with clearing that link as part of record initialization. This structural comparison is an interpretation; the callback's full intent remains unproven.
 - Ghidra still reports `procedure=null` at this address. Do not conclude that the callback is already an independently identified function entry.
 - A separate function-level attempt at `0x8ca934` in [run #55](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080) ([artifact 12026372536](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080/artifacts/12026372536)) failed with `invalid_request`: `No procedure exists at the requested address: 0x8ca934`. This provides no function body; it is consistent with the instruction probes' `procedure=null` and means the callback boundary remains unresolved.
-
-**Result of run #56:** `0x8ca93b` decodes to `MOV dword ptr [EAX + 0x28],ECX` (`89 48 28`, three bytes, `FALL_THROUGH`, `procedure=null`). In the context of runs #52–54, it stores zero to record offset `+0x28`. Earlier list routines use `+0x28` as a next-link field, so this is consistent with clearing the forward link as well as the `+0x2c` back-link, without proving the callback's complete purpose. **Next target:** inspect `0x8ca93e`.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
