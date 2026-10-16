@@ -355,8 +355,6 @@ Evidence: [Actions run #49, ID 38785347582](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation:** the pool allocator delegates per-record initialization/processing through a callback-like pointer rather than directly constructing the record fields in `FUN_00401fa0`. The exact callback semantics and the role of `LAB_008ca934` remain unknown.
 
-**Result of run #54:** `0x8ca938` decodes to `MOV dword ptr [EAX + 0x2c],ECX` (`89 48 2c`, three bytes, `FALL_THROUGH`, `procedure=null`). The sequence copies the record pointer into `EAX`, clears `ECX`, then writes zero to record offset `+0x2c`. Earlier list routines use `+0x2c` as a previous-link field, so the store is consistent with clearing that link; the callback's overall purpose is not proven. **Next target:** inspect `0x8ca93b`.
-
 ### Callback transfer thunk: `0x401fd6` — one-shot probe run #50
 
 Evidence: [Actions run #50, ID 38852450383](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383); [artifact 12025552949](https://github.com/rakmahefa/aoe-rea/actions/runs/38852450383/artifacts/12025552949).
@@ -390,8 +388,6 @@ Evidence: [Actions run #53, ID 38853803910](https://github.com/rakmahefa/aoe-rea
 - The preceding instruction from run #52 is `MOV EAX,ECX` at `0x8ca934`. The observed pair therefore copies the record pointer to `EAX`, then clears `ECX`. This is register data flow only: it does not establish that a field is cleared or reveal the intended callback operation.
 - The procedure boundary remains unresolved at both addresses. Keep following sequentially until a decoded branch, call, return, or procedure boundary provides stronger evidence.
 
-**Result of run #54:** `0x8ca938` decodes to `MOV dword ptr [EAX + 0x2c],ECX` (`89 48 2c`, three bytes, `FALL_THROUGH`, `procedure=null`). In the context of runs #52–53, it writes zero at record offset `+0x2c`. Prior list routines associate that offset with a previous-link field, which makes clearing the link plausible but not a proven business-level interpretation. **Next target:** inspect `0x8ca93b`.
-
 ### Callback continuation: clear a record link at `0x8ca938` — one-shot probe run #54
 
 Evidence: [Actions run #54, ID 38854422589](https://github.com/rakmahefa/aoe-rea/actions/runs/38854422589); [artifact 12026542570](https://github.com/rakmahefa/aoe-rea/actions/runs/38854422589/artifacts/12026542570).
@@ -400,6 +396,7 @@ Evidence: [Actions run #54, ID 38854422589](https://github.com/rakmahefa/aoe-rea
 - Combining runs #52–54, the observed sequence is `MOV EAX,ECX` at `0x8ca934`, `XOR ECX,ECX` at `0x8ca936`, then a DWORD store of `ECX` to `[EAX+0x2c]` at `0x8ca938`. The register flow supports that zero is written at offset `+0x2c` of the record pointer copied to `EAX`.
 - Earlier list-handling probes associate node offset `+0x2c` with a previous/back-link field. The instruction is therefore consistent with clearing that link as part of record initialization. This structural comparison is an interpretation; the callback's full intent remains unproven.
 - Ghidra still reports `procedure=null` at this address. Do not conclude that the callback is already an independently identified function entry.
+- A separate function-level attempt at `0x8ca934` in [run #55](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080) ([artifact 12026372536](https://github.com/rakmahefa/aoe-rea/actions/runs/38854789080/artifacts/12026372536)) failed with `invalid_request`: `No procedure exists at the requested address: 0x8ca934`. This provides no function body; it is consistent with the instruction probes' `procedure=null` and means the callback boundary remains unresolved.
 
 **Next target:** inspect `0x8ca93b`, the next sequential address after this three-byte instruction.
 
