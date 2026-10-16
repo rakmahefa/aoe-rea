@@ -370,17 +370,17 @@ Evidence: [Actions run #50, ID 38852450383](https://github.com/rakmahefa/aoe-rea
 
 **Interpretation, now confirmed at the control-flow level:** `FUN_00401fa0` iterates over the block and dispatches a callback for each record through an indirect tail jump. The callback's field-level behavior remains unknown until its entry is traced.
 
-**Next target:** inspect native instructions at `0x8ca934`, the callback label passed by `FUN_004adea4). Determine whether this address is a function entry or an internal basic block, then follow its actual control flow.
+**Result of run #52:** the callback label at `0x8ca934` is not recognized as a procedure entry; its first decoded instruction is `MOV EAX,ECX`. The next target is `0x8ca936`.
 
 ### Callback entry instruction: `0x8ca934` — one-shot probe run #52
 
 Evidence: [Actions run #52, ID 38853201623](https://github.com/rakmahefa/aoe-rea/actions/runs/38853201623); [artifact 12025469262](https://github.com/rakmahefa/aoe-rea/actions/runs/38853201623/artifacts/12025469262).
 
-- The native probe decodes `8b c1` at `0x8ca934` as `MOV EAX,ECX`, length two bytes, `FALL_THROUGH), with `procedure=null`.
-- In the context established by runs #49–50, `ECX) carries the current record pointer into the callback. This instruction copies that pointer to `EAX); it does not by itself establish any field initialization or business meaning.
+- The native probe decodes `8b c1` at `0x8ca934` as `MOV EAX,ECX`, length two bytes, `FALL_THROUGH`, with `procedure=null`.
+- In the context established by runs #49–50, `ECX` carries the current record pointer into the callback. This instruction copies that pointer to `EAX`; it does not by itself establish any field initialization or business meaning.
 - Ghidra does not recognize `0x8ca934` as a procedure entry for this probe. Treat it as a code label/internal block unless a later function-body analysis establishes a broader procedure boundary.
 
-**Next target:** probe `0x8ca936), the sequential address after this two-byte instruction. Continue following decoded calls, branches and returns rather than assuming a linear function body.
+**Next target:** probe `0x8ca936`, the sequential address after this two-byte instruction. Continue following decoded calls, branches and returns rather than assuming a linear function body.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
