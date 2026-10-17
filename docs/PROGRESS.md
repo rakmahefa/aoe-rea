@@ -14,9 +14,9 @@
 | Indicator | Current value | What it means |
 |---|---:|---|
 | **Essential-system understanding** | **12.45 / 100 ≈ 12%** | Preliminary weighted score across the essential subsystems listed below. It measures the strength and breadth of documented behavioral understanding, not lines of code decompiled. |
-| **Whole-program function coverage** | **Not yet measurable** | We do not yet have a verified whole-binary inventory/count of functions, imports, and dependencies to use as the denominator. Do not substitute a count of the functions we happened to inspect. |
+| **Function dossier coverage** | **25 / 30,581 = 0.0818%** | The Ghidra inventory now provides a reproducible denominator for this exact binary/toolchain snapshot. The 25 ledger entries are partial evidence-backed dossiers, not 25 fully understood functions. |
 | **Working native Linux clone demonstrated** | **0% verified** | No reconstructed game source, working native ELF game executable, or gameplay parity test has been demonstrated yet. This is an evidence-based delivery status, not a claim that preparatory work is zero. |
-| **Analysis toolchain** | **Operational for focused probes** | REA 6.4.0 + Ghidra 12.1.4 successfully decode selected instructions and produce retrievable artifacts. This does not mean full-game analysis is automated. |
+| **Analysis toolchain and inventory** | **Operational** | REA 6.4.0 supports focused instruction probes; the Ghidra 12.1.4 headless workflow now exports the program-wide function, body-range, memory-block and external-library inventory plus calculated progress metrics. |
 
 ### How the essential-understanding score is calculated
 
@@ -52,7 +52,9 @@ Do not award points merely because a function has pseudocode. Every nonzero rati
 
 The essential-system score above is a useful planning indicator, but it does **not** answer “what percentage of the entire executable have we understood?” We need a reproducible inventory before that question can be answered.
 
-The next inventory milestone should export, for the exact SHA-256 above:
+The initial inventory for the exact SHA-256 above is available from [workflow run #63](https://github.com/rakmahefa/aoe-rea/actions/runs/39023415279) ([artifact 12097254654](https://github.com/rakmahefa/aoe-rea/actions/runs/39023415279/artifacts/12097254654)). It was produced with Ghidra 12.1.4 from source commit `1cd64e4aae565f5a06d7ce6a96fa151bb84b7f13`. Snapshot totals: **30,581 Ghidra function entries**, **83 thunks**, **40,945 function-body ranges**, **6 memory blocks** and **22 external libraries**. This is the machine-inventory denominator for the exact PE32 SHA-256 above, not a claim that every detected boundary corresponds to a distinct original source-level function. The inventory workflow now also emits `progress_metrics.json` from the machine-readable [function ledger](FUNCTION_LEDGER.csv) and [essential-system scorecard](ESSENTIAL_SYSTEM_SCORECARD.csv); the rerun including this calculator is [workflow run #64](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900).
+
+The inventory pipeline exports, for the exact SHA-256 above:
 
 1. Total functions recognized by Ghidra, with entry address, body size/ranges and whether the function boundary is trustworthy.
 2. Imports, imported DLLs, exports (where relevant), strings, executable/data segments and direct/indirect references.
@@ -63,7 +65,7 @@ Then report two different function percentages:
 - **Function triage coverage** = functions with at least a recorded classification / total inventoried functions.
 - **Function behavior understanding** = functions with evidence-backed behavioral summaries / total inventoried functions.
 
-Both must include a denominator, inventory timestamp, target SHA-256, and rules for excluding thunks, duplicated code ranges, or malformed function boundaries. Also report a confidence distribution; a function with a guessed name must not count as understood.
+Both must include a denominator, inventory timestamp, target SHA-256, and rules for excluding thunks, duplicated code ranges, or malformed function boundaries. The current 25 dossier entries are recorded in `docs/FUNCTION_LEDGER.csv`; their coverage is 25/30,581 = 0.08175%. The ledger explicitly marks all 25 as **not behavior-validated** against the original yet. This does not mean the static observations are worthless; it means no differential/oracle tests have validated end-to-end behavior. Also report a confidence distribution; a function with a guessed name must not count as understood.
 
 ## Native Linux clone delivery gates
 
@@ -94,6 +96,15 @@ Immediate order of work:
 1. Continue tracing the loop and callback at `0x401fbf`, keeping evidence attached to run/artifact IDs.
 2. Build the machine-readable whole-binary inventory so function-level progress has a real denominator.
 3. Refine weights after subsystem classification and dependency mapping, then update this dashboard only when new evidence changes a score.
+
+## Machine-readable inputs
+
+- [`docs/FUNCTION_LEDGER.csv`](FUNCTION_LEDGER.csv): one row per Ghidra function with a dossier entry, evidence link, scope and validation state.
+- [`docs/ESSENTIAL_SYSTEM_SCORECARD.csv`](ESSENTIAL_SYSTEM_SCORECARD.csv): explicit subsystem weights and current levels; weights must total 100.
+- [`scripts/compute_progress.py`](../scripts/compute_progress.py): validates these inputs against the `summary.json` from the inventory artifact and outputs `progress_metrics.json` with dossier coverage, validated-function coverage and essential-system score.
+- [Ghidra whole-program inventory workflow](../.github/workflows/rea-program-inventory.yml): rerun it after material changes to the target, evidence ledger, or scorecard.
+
+The function count belongs to a specific binary hash and Ghidra version. Recompute it rather than assuming the denominator will remain stable. The whole-program semantic-understanding percentage remains inherently approximate: dossier coverage is a count of documented functions, while the weighted essential-system score accounts for breadth across high-value subsystems.
 
 ## Update policy
 
