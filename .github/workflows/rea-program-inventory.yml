@@ -88,6 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$REPORT_DIR"
+          mkdir -p "$RUNNER_TEMP/ghidra-inventory-project"
           target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
           printf '%s\n' "$GHIDRA_VERSION" > "$REPORT_DIR/ghidra-version.txt"
           printf '%s\n' "$target_sha" > "$REPORT_DIR/target-sha256.txt"
