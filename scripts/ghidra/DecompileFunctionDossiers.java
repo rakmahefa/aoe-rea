@@ -88,6 +88,11 @@ public class DecompileFunctionDossiers extends GhidraScript {
             throw new IllegalStateException("Ghidra returned no function entries; refusing to publish an empty report.");
         }
 
+        try (BufferedWriter countWriter = new BufferedWriter(new OutputStreamWriter(
+                new FileOutputStream(new File(outputRoot, "function-count.txt")), StandardCharsets.UTF_8))) {
+            write(countWriter, Long.toString(total));
+        }
+
         ChunkingTaskMonitor chunkMonitor = new ChunkingTaskMonitor(monitor);
         chunkMonitor.doInitialize(total);
         CachingPool<DecompInterface> decompilerPool =
