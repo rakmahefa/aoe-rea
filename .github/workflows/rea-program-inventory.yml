@@ -8,6 +8,9 @@ on:
       - agent/probe-loop-401fca-20261017
     paths:
       - 'scripts/ghidra/ExportProgramInventory.java'
+      - 'scripts/compute_progress.py'
+      - 'docs/FUNCTION_LEDGER.csv'
+      - 'docs/ESSENTIAL_SYSTEM_SCORECARD.csv'
       - '.github/workflows/rea-program-inventory.yml'
 
 permissions:
@@ -132,6 +135,13 @@ jobs:
               "external_library_count": data["external_library_count"],
           }, indent=2))
           PY
+
+          python3 scripts/compute_progress.py \
+            --inventory "$REPORT_DIR/summary.json" \
+            --ledger docs/FUNCTION_LEDGER.csv \
+            --scorecard docs/ESSENTIAL_SYSTEM_SCORECARD.csv \
+            --output "$REPORT_DIR/progress_metrics.json" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
           {
             echo "## Whole-program inventory"
