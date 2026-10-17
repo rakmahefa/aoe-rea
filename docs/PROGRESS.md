@@ -88,12 +88,12 @@ These are intentionally independent of the understanding score.
 - [Probe #59 — `0x401fca: SUB EDI,0x1`](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596) · [artifact](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596/artifacts/12094140406).
 - [Probe #60 — `0x401fcd: JNZ 0x00401fbf`](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352) confirms the loop-back branch.
 - [Probe #61 — `0x401fbf: MOV ECX,ESI`](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509) and [probe #62 — `0x401fc1: MOV EAX,EBX`](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629) establish the register setup before the callback thunk.
-- [Inventory + metrics run #64](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900) exports the function census and computes the dossier-coverage and essential-system indicators. A follow-up inventory run is checking that every ledger address/name matches an actual inventory entry.
+- [Inventory + metrics run #65](https://github.com/rakmahefa/aoe-rea/actions/runs/39024391535) exports the function census, confirms every ledger address/name against the inventory, and computes dossier coverage and essential-system indicators. [Artifact 12098540427](https://github.com/rakmahefa/aoe-rea/actions/runs/39024391535/artifacts/12098540427).
 
 Immediate order of work:
 
-1. Finish inventory validation and preserve the generated `progress_metrics.json` as the reproducible score snapshot.
-2. Extend inventory with imports, string references and a call graph, then classify the rest of the 30,581 function entries into system areas.
+1. Extend the inventory export with imported symbols/API details, string/data references and a call graph; the current workflow and ledger validation are passing.
+2. Classify the remaining 30,556 function entries into subsystems, runtime/library code, thunks, or unknown categories before presenting a whole-program triage percentage.
 3. Continue reverse engineering the caller graph around `FUN_004adea4` / `FUN_008caa04`, and revise subsystem levels only when new evidence changes actual behavioral understanding.
 
 ## Machine-readable inputs
