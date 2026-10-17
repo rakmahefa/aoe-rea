@@ -8,7 +8,7 @@ The project is not intended to stop at disassembly reports or a Wine/Proton laun
 
 ## Progress tracking
 
-See [`docs/PROGRESS.md`](docs/PROGRESS.md) for an evidence-weighted estimate of essential-system understanding, the current uncertainty around whole-binary coverage, and separate delivery gates for the native Linux clone. This dashboard does not equate disassembly with understanding or research with a runnable port.
+See [`docs/PROGRESS.md`](docs/PROGRESS.md) for an evidence-weighted estimate of essential-system understanding, the current uncertainty around whole-binary coverage, and separate delivery gates for the native Linux clone. This dashboard does not equate disassembly with understanding or research with a runnable port. The supporting [function evidence ledger](docs/FUNCTION_LEDGER.csv) and [essential-system scorecard](docs/ESSENTIAL_SYSTEM_SCORECARD.csv) feed the inventory workflow's generated progress metrics.
 
 ## Goal
 
