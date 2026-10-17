@@ -500,12 +500,17 @@ Use game files only when obtained lawfully. Do not publish proprietary executabl
 The project succeeds when a GitHub Release provides a **genuine Linux-native executable**, reproducible build/release steps, documented dependencies, and an honest account of its tested functionality and limitations.
 
 
-## Automatic function-by-function analysis
+## Automatic function dossiers
 
-The workflow [`rea-function-dossiers.yml`](.github/workflows/rea-function-dossiers.yml) runs on demand and weekly. It imports the exact reference executable into Ghidra, iterates over every discovered function, and produces:
+The workflow [rea-function-dossiers.yml](.github/workflows/rea-function-dossiers.yml) runs on demand and weekly. It imports the exact reference executable into Ghidra, enumerates the function entries, then decompiles them in **batches of 100** using Ghidra's parallel decompiler and a reusable pool of decompiler processes.
 
-- `function-dossiers/index.csv`: index of every function and decompilation status.
-- `function-dossiers/functions/<prefix>/<address>_<name>.md`: one Markdown note per function, including address, Ghidra name, target SHA-256, tool version, and decompiler output.
-- `function-dossiers/README.md`: summary counts for successful and failed decompilations.
+Each completed batch is recorded in function-dossiers/index.csv and the index is flushed before processing continues. GitHub Actions logs a batch checkpoint, so the run shows incremental progress rather than appearing silent while the full executable is processed.
 
-The complete folder is published as the GitHub Actions artifact **`aoe-rea-function-dossiers`** (30-day retention), rather than committing tens of thousands of generated files to Git. The workflow validates that every indexed function has a note file. These are machine-generated static-analysis dossiers, **not** verified behavioral explanations; successful decompilation does not mean a function is understood. The whole-program pass may take hours and is capped at six hours per run.
+The artifact contains:
+
+- function-dossiers/index.csv: stable global index, address, Ghidra name, thunk/external flags, decompilation status and note path.
+- function-dossiers/functions/<prefix>/<address>_<name>.md: one Markdown note per function, including address, target SHA-256, tool version, and decompiler output.
+- function-dossiers/function-count.txt: expected number of function entries, used to reject incomplete indexes.
+- function-dossiers/README.md: counts of successful and failed decompilations and the batch total.
+
+The complete folder is published as the GitHub Actions artifact **aoe-rea-function-dossiers** (30-day retention), rather than committing tens of thousands of generated files to Git. The workflow checks that all global indexes are present and contiguous and that every indexed function has a note file. Parallel decompilation should improve throughput, but actual runtime depends on the binary and runner. These are machine-generated static-analysis dossiers, **not** verified behavioral explanations; successful decompilation does not mean a function is understood. The run remains capped at six hours.

@@ -1,10 +1,10 @@
-name: Decompile all functions into individual notes
+name: Decompile functions in parallel batches of 100
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - agent/probe-loop-401fca-20261017
+      - agent/decompiler-batches-100-20261017
     paths:
       - 'scripts/ghidra/DecompileFunctionDossiers.java'
       - '.github/workflows/rea-function-dossiers.yml'
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   decompile:
-    name: Generate one dossier per Ghidra function
+    name: Generate dossiers using 100-function batches
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     env:
@@ -78,7 +78,7 @@ jobs:
           test -x "$ghidra_dir/support/analyzeHeadless"
           echo "GHIDRA_INSTALL_DIR=$ghidra_dir" >> "$GITHUB_ENV"
 
-      - name: Run whole-program decompilation and create per-function notes
+      - name: Run parallel decompilation in batches of 100 and create per-function notes
         shell: bash
         run: |
           set -euo pipefail
@@ -100,33 +100,52 @@ jobs:
               "$GHIDRA_VERSION" \
             -deleteProject
 
-      - name: Validate dossier completeness and publish counts
+      - name: Validate batch checkpoints and publish counts
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import csv
+          import math
           from pathlib import Path
+
           root = Path("function-dossiers")
           index = root / "index.csv"
+          count_path = root / "function-count.txt"
           if not index.is_file():
               raise SystemExit("Missing index.csv")
+          if not count_path.is_file():
+              raise SystemExit("Missing function-count.txt")
+          expected = int(count_path.read_text(encoding="utf-8").strip())
           with index.open(newline="", encoding="utf-8") as f:
               rows = list(csv.DictReader(f))
-          missing = [r["note_file"] for r in rows if not (root / r["note_file"]).is_file()]
           if not rows:
               raise SystemExit("No function entries were produced")
+          indices = [int(row["index"]) for row in rows]
+          if indices != list(range(expected)):
+              raise SystemExit(
+                  f"Index is incomplete or out of order: got {len(indices)} rows, expected {expected} "
+                  "contiguous indices starting at zero."
+              )
+          missing = [row["note_file"] for row in rows if not (root / row["note_file"]).is_file()]
           if missing:
               raise SystemExit(f"{len(missing)} function note files are missing; first: {missing[:5]}")
           status = {}
-          for r in rows:
-              status[r["decompile_status"]] = status.get(r["decompile_status"], 0) + 1
+          for row in rows:
+              status[row["decompile_status"]] = status.get(row["decompile_status"], 0) + 1
+          batch_size = 100
+          batch_count = math.ceil(len(rows) / batch_size)
+          last_batch_size = len(rows) % batch_size or batch_size
           lines = [
               "## Function dossier generation",
               "",
-              f"- Target SHA-256: `{(root / 'target-sha256.txt').read_text().strip()}`",
-              f"- Function entries indexed: **{len(rows)}**",
+              f"- Target SHA-256: {(root / 'target-sha256.txt').read_text().strip()}",
+              f"- Function entries indexed: **{len(rows)} / {expected}**",
               f"- Markdown notes verified: **{len(rows) - len(missing)} / {len(rows)}**",
+              f"- Batch size: **{batch_size} functions**",
+              f"- Batches completed: **{batch_count}** (last batch: {last_batch_size} functions)",
+              "- Execution: Ghidra parallel decompiler with a reusable decompiler pool.",
+              "- Index checkpoint: flushed after each completed batch.",
               f"- Decompilation succeeded: **{status.get('ok', 0)}**",
               f"- Decompilation failed: **{status.get('failed', 0)}**",
               f"- External entries: **{status.get('external', 0)}**",
