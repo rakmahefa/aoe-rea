@@ -6,6 +6,10 @@ The project is not intended to stop at disassembly reports or a Wine/Proton laun
 
 > **Status:** early research stage. The repository contains reference EXE/DLL files under [`retro/exe et dll/`](retro/exe%20et%20dll/). A complete native Linux port has not yet been established. Treat all future builds as experimental until their functionality is demonstrated and documented.
 
+## Progress tracking
+
+See [`docs/PROGRESS.md`](docs/PROGRESS.md) for an evidence-weighted estimate of essential-system understanding, function-dossier coverage, and separate delivery gates for the native Linux clone. This dashboard does not equate disassembly with understanding or research with a runnable port. The supporting [function evidence ledger](docs/FUNCTION_LEDGER.csv) and [essential-system scorecard](docs/ESSENTIAL_SYSTEM_SCORECARD.csv) feed the [Ghidra whole-program inventory workflow](.github/workflows/rea-program-inventory.yml), which generates `progress_metrics.json` alongside function entries, body ranges, memory blocks and external-library names.
+
 ## Goal
 
 Work toward a distributable Linux-native game build:
@@ -56,7 +60,7 @@ The manual [REA binary analysis workflow](.github/workflows/rea-analysis.yml) ru
 
 When `search_query` or `xref_address` is set without `function_selector`, the workflow skips the default PE entry-point/function pass so focused exploration does not waste time on likely CRT startup code. The workflow is read-only and performs static analysis only: it does not reconstruct source automatically or build a native Linux executable. Search matches and cross-references are leads, not proof of gameplay semantics.
 
-## Current investigation status (2026-10-16)
+## Current investigation status (2026-10-17)
 
 The latest baseline analysis is [REA binary analysis #30](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507) ([artifact 11841443159](https://github.com/rakmahefa/aoe-rea/actions/runs/38452908507/artifacts/11841443159)). It decodes `0x8827d1` as `MOV ECX,dword ptr [EAX + 0x13c]` (6 bytes, `FALL_THROUGH`), still with `procedure=null`. Subsequent one-address probes have recovered an early false-return path and one direct helper call, but Ghidra still does not identify the callback label as a procedure entry. [Run #20](https://github.com/rakmahefa/aoe-rea/actions/runs/38530554944) confirmed `PUSH 0x0` at `0x882809` (2 bytes, `FALL_THROUGH`, `procedure=null`; [artifact 11878127349](https://github.com/rakmahefa/aoe-rea/actions/runs/38530554944/artifacts/11878127349)); [run #21](https://github.com/rakmahefa/aoe-rea/actions/runs/38535073544) confirmed the same at `0x88280b` (artifact 11880091082). [Run #22](https://github.com/rakmahefa/aoe-rea/actions/runs/38536133294) decoded bytes `8d 4c 24 2c` at `0x88280d` as `LEA ECX,[ESP+0x2c]` (4 bytes, `FALL_THROUGH`, `procedure=null`; [artifact 11881235066](https://github.com/rakmahefa/aoe-rea/actions/runs/38536133294/artifacts/11881235066)). [Run #23](https://github.com/rakmahefa/aoe-rea/actions/runs/38543440912) decoded byte `51` at `0x882811` as `PUSH ECX` (1 byte, `FALL_THROUGH`, `procedure=null`; [artifact 11884165751](https://github.com/rakmahefa/aoe-rea/actions/runs/38543440912/artifacts/11884165751)). [Run #24](https://github.com/rakmahefa/aoe-rea/actions/runs/38592966677) decoded bytes `8b 4c 24 28` at `0x882812` as `MOV ECX,dword ptr [ESP+0x28]` (4 bytes, `FALL_THROUGH`, `procedure=null`; [artifact 11909780246](https://github.com/rakmahefa/aoe-rea/actions/runs/38592966677/artifacts/11909780246)). [Run #25](https://github.com/rakmahefa/aoe-rea/actions/runs/38593942037) succeeded: byte `52` at `0x882816` decodes as `PUSH EDX` (1 byte, `FALL_THROUGH`, `procedure=null`; [artifact 11908194310](https://github.com/rakmahefa/aoe-rea/actions/runs/38593942037/artifacts/11908194310)). Run #26 succeeded: bytes `8b 54 24 28` at `0x882817` decode as `MOV EDX,dword ptr [ESP+0x28]` (4 bytes, `FALL_THROUGH`, `procedure=null`; [artifact 11947964421](https://github.com/rakmahefa/aoe-rea/actions/runs/38682182138/artifacts/11947964421)). Run #27 succeeded: byte `51` at `0x88281b` decodes as `PUSH ECX` (1 byte, `FALL_THROUGH`, `procedure=null`; [artifact 11948769728](https://github.com/rakmahefa/aoe-rea/actions/runs/38684233397/artifacts/11948769728)). Run #28 succeeded: byte `52` at `0x88281c` decodes as `PUSH EDX` (1 byte, `FALL_THROUGH`, `procedure=null`; [artifact 11950941183](https://github.com/rakmahefa/aoe-rea/actions/runs/38686269488/artifacts/11950941183)). The sequential callback probe #29 ([GitHub Actions run ID 38691004803](https://github.com/rakmahefa/aoe-rea/actions/runs/38691004803); [artifact 11952515685](https://github.com/rakmahefa/aoe-rea/actions/runs/38691004803/artifacts/11952515685)) completed successfully. It decodes `0x88281d` as `MOV ECX,EAX` (bytes `8b c8`, 2 bytes, `FALL_THROUGH`, `procedure=null`). The one-shot probe workflow's run #30 ([Actions run ID 38731342538](https://github.com/rakmahefa/aoe-rea/actions/runs/38731342538); [artifact 11970986662](https://github.com/rakmahefa/aoe-rea/actions/runs/38731342538/artifacts/11970986662)) then decoded `0x88281f` as `CALL 0x0087157b` (bytes `e8 57 ed fe ff`, 5 bytes, unconditional direct call, `procedure=null`). One-shot probe run #31 ([Actions run ID 38732373199](https://github.com/rakmahefa/aoe-rea/actions/runs/38732373199); [artifact 11971133081](https://github.com/rakmahefa/aoe-rea/actions/runs/38732373199/artifacts/11971133081)) confirms that `0x87157b` is a recognized procedure entry and decodes its first instruction as `MOV EAX,dword ptr [ESP + 0x20]` (bytes `8b 44 24 20`, 4 bytes, `FALL_THROUGH`). This establishes only a stack-relative dword read, not the value's semantic role. The function dossier from probe run #32 is summarized below. One-shot probe run #33 (https://github.com/rakmahefa/aoe-rea/actions/runs/38734503232) analyzes direct helper `FUN_00799898`. The sequential return address after the caller's `CALL` is `0x882824`; prioritize the callee chain first. These probe run numbers are specific to the temporary one-shot workflow and are distinct from the baseline analysis run numbering. The probe workflow used during research is temporary and is not intended to remain in the repository.
 
@@ -412,7 +416,44 @@ Evidence: [Actions run #57, ID 38856897665](https://github.com/rakmahefa/aoe-rea
 
 - The native probe decodes byte `c3` at `0x8ca93e` as `RET`, length one byte, return flow, with `procedure=null`.
 - This ends the observed callback instruction sequence. Combined with run #50's native `JMP EAX` thunk and the call to that thunk at `0x401fc3`, a normal `RET` is consistent with resuming at `0x401fc8`; this is a control-flow inference, not recovery of the callback's domain semantics.
-- No linear instruction probe should proceed beyond the `RET` as if it were the same execution path. The next useful probe is the caller continuation at `0x401fc8`.
+- No linear instruction probe should proceed beyond the `RET` as if it were the same execution path. At the time of run #57, the next useful probe was the caller continuation at `0x401fc8`; probes #58–59 now cover that continuation and the loop-counter decrement below.
+
+### Caller continuation after callback — `0x401fc8` (probe #58)
+
+Evidence: [Actions run #58, ID 38923177848](https://github.com/rakmahefa/aoe-rea/actions/runs/38923177848); [artifact 12055028788](https://github.com/rakmahefa/aoe-rea/actions/runs/38923177848/artifacts/12055028788).
+
+- The native instruction probe decodes bytes `03 f5` at `0x401fc8` as `ADD ESI,EBP`, length 2, `FALL_THROUGH`, with `procedure=0x401fa0`.
+- The instruction itself proves only a register addition. The function dossier for `FUN_00401fa0` in probe #49 shows that `ESI` holds the current record address and `EBP` holds the second argument; `FUN_004adea4` calls this loop with stride `0x34`. In combination, this is strong evidence that the caller advances the current record pointer by the record stride after the callback returns.
+- The target executable is `retro/exe et dll/age3y.exe`, SHA-256 `b1a1dab7264d2db72e8f8ae1df1e419eecc223b40db00c9d1013a3bc77611d9d`; the artifact records REA 6.4.0 and Ghidra 12.1.4.
+- Ghidra identifies the enclosing procedure as `FUN_00401fa0`; this differs from the callback label at `0x8ca934`, for which prior probes report `procedure=null`.
+
+**Next target at the time of probe #58:** `0x401fca`, the next sequential instruction.
+
+### Loop-counter decrement — `0x401fca` (probe #59)
+
+Evidence: [Actions run #59, ID 39012977596](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596); [artifact 12094140406](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596/artifacts/12094140406).
+
+- The native probe decodes bytes `83 ef 01` at `0x401fca` as `SUB EDI,0x1`, length 3, `FALL_THROUGH`, with `procedure=0x401fa0`.
+- The complete function dossier from probe #49 shows `EDI` is the loop counter initialized from the requested count. Probe #59 directly confirms that the counter is decremented once after the record pointer advances; it does not itself establish the following branch.
+- The function-level assembly in probe #49 already reports `0x401fcd: JNZ 0x00401fbf`. That decode makes a loop-back to the record-processing block consistent with the observed count-decrement sequence; a one-address probe at `0x401fcd` is the next confirmation step.
+- Together with #50 and #52–57, the observed control-flow chain is: `CALL 0x401fd6` at `0x401fc3` → thunk `JMP EAX` → callback returns at `0x8ca93e` → caller resumes at `0x401fc8` → advances `ESI` by `EBP` → decrements `EDI`. This does not establish the original source-level signature or broader business meaning of the callback.
+
+### Loop-back branch — `0x401fcd` (probe #60)
+
+Evidence: [Actions run #60, ID 39013905352](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352); [artifact 12093873174](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352/artifacts/12093873174).
+
+- The native probe decodes bytes `75 f0` at `0x401fcd` as `JNZ 0x00401fbf`, length two bytes, a conditional jump with a direct destination, and `procedure=0x401fa0`.
+- This confirms the loop-back target already visible in the function dossier #49. Together with #58 (`ADD ESI,EBP`) and #59 (`SUB EDI,0x1`), it confirms the pointer advance, counter decrement, and conditional branch in the fixed-stride loop.
+- The next useful instruction target is the branch destination `0x401fbf`, not the byte immediately after the conditional jump.
+
+### Callback-register setup — `0x401fbf` and `0x401fc1` (probes #61–62)
+
+Evidence: [run #61, ID 39022375509](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509) · [artifact 12097416454](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509/artifacts/12097416454); [run #62, ID 39022864629](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629) · [artifact 12097711151](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629/artifacts/12097711151).
+
+- At `0x401fbf`, bytes `8b ce` decode as `MOV ECX,ESI` (2 bytes, fall-through, `procedure=0x401fa0`). The function dossier #49 identifies `ESI` as the current record pointer.
+- At `0x401fc1`, bytes `8b c3` decode as `MOV EAX,EBX` (2 bytes, fall-through, `procedure=0x401fa0`). The function dossier #49 identifies `EBX` as the callback target supplied to the loop.
+- Combined with `CALL 0x401fd6` at `0x401fc3` and the thunk `JMP EAX` at `0x401fd6` (#50), this confirms that the loop passes the current record in `ECX` and dispatches through the callback address in `EAX`. After the callback returns, #58–60 confirm the stride advance, counter decrement and conditional loop-back.
+- This completes the observed machine-level control-flow shape of `FUN_00401fa0`. It is a reusable fixed-stride callback loop used by the pool path; it does **not** establish that this helper itself implements pathfinding or other gameplay behavior.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
@@ -457,3 +498,14 @@ Use game files only when obtained lawfully. Do not publish proprietary executabl
 ## Definition of success
 
 The project succeeds when a GitHub Release provides a **genuine Linux-native executable**, reproducible build/release steps, documented dependencies, and an honest account of its tested functionality and limitations.
+
+
+## Automatic function-by-function analysis
+
+The workflow [`rea-function-dossiers.yml`](.github/workflows/rea-function-dossiers.yml) runs on demand and weekly. It imports the exact reference executable into Ghidra, iterates over every discovered function, and produces:
+
+- `function-dossiers/index.csv`: index of every function and decompilation status.
+- `function-dossiers/functions/<prefix>/<address>_<name>.md`: one Markdown note per function, including address, Ghidra name, target SHA-256, tool version, and decompiler output.
+- `function-dossiers/README.md`: summary counts for successful and failed decompilations.
+
+The complete folder is published as the GitHub Actions artifact **`aoe-rea-function-dossiers`** (30-day retention), rather than committing tens of thousands of generated files to Git. The workflow validates that every indexed function has a note file. These are machine-generated static-analysis dossiers, **not** verified behavioral explanations; successful decompilation does not mean a function is understood. The whole-program pass may take hours and is capped at six hours per run.

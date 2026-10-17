@@ -1,0 +1,10 @@
+subsystem,weight,current_level,evidence_reason
+"Startup, OS/runtime and dependencies",12,10,Sampled startup/runtime functions; no complete DLL/import/platform dependency map.
+"Main game loop, lifecycle and global state",12,0,No sufficiently supported model of the full frame/tick loop or lifecycle.
+"World, entities, simulation and spatial occupancy",20,25,Several geometry/obstruction helpers and a grid-membership update path are mapped; gameplay semantics remain incomplete.
+"Pathfinding, navigation and knowledge-base callbacks",18,25,"API registration and candidate tables/hash/heap/priority helpers are mapped, but end-to-end path semantics remain unproven."
+"Gameplay rules, unit orders, AI, economy and construction",16,0,"No broad, behaviorally validated model yet."
+"Rendering, graphics and display pipeline",10,0,Critical render path and replacement requirements not mapped.
+"Input, audio and UI",5,10,Some Windows message/UI behavior examined; coverage remains shallow.
+"Assets, files and resource loading",5,25,A particle-definition loading path is documented; whole resource pipeline unknown.
+"Save/load, networking, replay and mod interfaces",2,0,Not sufficiently investigated.

@@ -1,0 +1,163 @@
+name: Ghidra whole-program inventory
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - agent/probe-loop-401fca-20261017
+    paths:
+      - 'scripts/ghidra/ExportProgramInventory.java'
+      - 'scripts/compute_progress.py'
+      - 'docs/FUNCTION_LEDGER.csv'
+      - 'docs/ESSENTIAL_SYSTEM_SCORECARD.csv'
+      - '.github/workflows/rea-program-inventory.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rea-program-inventory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    name: Export whole-program function and dependency inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GHIDRA_VERSION: "12.1.4"
+      GHIDRA_ARCHIVE: "ghidra_12.1.4_PUBLIC_20260921.zip"
+      GHIDRA_URL: "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"
+      REPORT_DIR: "program-inventory"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate reference binary and test parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="retro/exe et dll/age3y.exe"
+          git ls-files --error-unmatch -- "$target" >/dev/null
+          test -f "$target"
+          echo "TARGET_PATH=$GITHUB_WORKSPACE/$target" >> "$GITHUB_ENV"
+          echo "TARGET_RELATIVE_PATH=$target" >> "$GITHUB_ENV"
+          python3 -m unittest discover -s tests -p 'test_pe_entry_point.py' -v
+
+      - name: Set up Java for Ghidra
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache Ghidra
+        id: ghidra-cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/ghidra-install
+          key: ghidra-${{ runner.os }}-12.1.4-public-20260921-jdk21
+
+      - name: Download Ghidra
+        if: steps.ghidra-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ghidra-download" "$RUNNER_TEMP/ghidra-install"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "$GHIDRA_URL" \
+            --output "$RUNNER_TEMP/ghidra-download/$GHIDRA_ARCHIVE"
+          unzip -q "$RUNNER_TEMP/ghidra-download/$GHIDRA_ARCHIVE" \
+            -d "$RUNNER_TEMP/ghidra-install"
+
+      - name: Configure Ghidra
+        shell: bash
+        run: |
+          set -euo pipefail
+          ghidra_dir="$(find "$RUNNER_TEMP/ghidra-install" -mindepth 1 -maxdepth 1 \
+            -type d -name 'ghidra_*_PUBLIC' -print -quit)"
+          if [[ -z "$ghidra_dir" || ! -x "$ghidra_dir/support/analyzeHeadless" ]]; then
+            echo "::error::Ghidra installation does not contain support/analyzeHeadless."
+            exit 1
+          fi
+          echo "GHIDRA_INSTALL_DIR=$ghidra_dir" >> "$GITHUB_ENV"
+          echo "Ghidra $GHIDRA_VERSION installed at $ghidra_dir"
+
+      - name: Export function, body-range, memory-block and external-library inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          mkdir -p "$RUNNER_TEMP/ghidra-inventory-project"
+          target_sha="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
+          printf '%s\n' "$GHIDRA_VERSION" > "$REPORT_DIR/ghidra-version.txt"
+          printf '%s\n' "$target_sha" > "$REPORT_DIR/target-sha256.txt"
+
+          "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" \
+            "$RUNNER_TEMP/ghidra-inventory-project" \
+            "aoe-rea-inventory" \
+            -import "$TARGET_PATH" \
+            -scriptPath "$GITHUB_WORKSPACE/scripts/ghidra" \
+            -postScript ExportProgramInventory.java \
+              "$GITHUB_WORKSPACE/$REPORT_DIR" \
+              "$target_sha" \
+              "$GITHUB_SHA" \
+              "$TARGET_RELATIVE_PATH" \
+              "$GHIDRA_VERSION" \
+            -deleteProject
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("program-inventory")
+          summary_path = report / "summary.json"
+          with summary_path.open(encoding="utf-8") as stream:
+              data = json.load(stream)
+          required = (
+              "functions.csv",
+              "function_ranges.csv",
+              "memory_blocks.csv",
+              "external_libraries.csv",
+          )
+          missing = [name for name in required if not (report / name).is_file()]
+          if missing:
+              raise SystemExit(f"Missing inventory files: {missing}")
+          if data.get("functions", {}).get("total", 0) <= 0:
+              raise SystemExit("Inventory reports zero functions; refusing to publish an empty denominator.")
+          print(json.dumps({
+              "target": data["target"],
+              "functions": data["functions"],
+              "memory": data["memory"],
+              "external_library_count": data["external_library_count"],
+          }, indent=2))
+          PY
+
+          python3 scripts/compute_progress.py \
+            --inventory "$REPORT_DIR/summary.json" \
+            --ledger docs/FUNCTION_LEDGER.csv \
+            --scorecard docs/ESSENTIAL_SYSTEM_SCORECARD.csv \
+            --output "$REPORT_DIR/progress_metrics.json" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "## Whole-program inventory"
+            echo
+            echo "- **Target:** `$TARGET_RELATIVE_PATH`"
+            echo "- **SHA-256:** `$target_sha`"
+            echo "- **Ghidra:** `$GHIDRA_VERSION`"
+            echo "- Detailed function entries and non-contiguous body ranges are attached as a workflow artifact."
+            echo "- Inventory identifies candidate functions; it does not itself establish behavioral understanding."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload inventory artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: aoe-rea-program-inventory
+          path: program-inventory/
+          if-no-files-found: warn
+          retention-days: 14
