@@ -446,6 +446,15 @@ Evidence: [Actions run #60, ID 39013905352](https://github.com/rakmahefa/aoe-rea
 - This confirms the loop-back target already visible in the function dossier #49. Together with #58 (`ADD ESI,EBP`) and #59 (`SUB EDI,0x1`), it confirms the pointer advance, counter decrement, and conditional branch in the fixed-stride loop.
 - The next useful instruction target is the branch destination `0x401fbf`, not the byte immediately after the conditional jump.
 
+### Callback-register setup — `0x401fbf` and `0x401fc1` (probes #61–62)
+
+Evidence: [run #61, ID 39022375509](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509) · [artifact 12097416454](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509/artifacts/12097416454); [run #62, ID 39022864629](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629) · [artifact 12097711151](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629/artifacts/12097711151).
+
+- At `0x401fbf`, bytes `8b ce` decode as `MOV ECX,ESI` (2 bytes, fall-through, `procedure=0x401fa0`). The function dossier #49 identifies `ESI` as the current record pointer.
+- At `0x401fc1`, bytes `8b c3` decode as `MOV EAX,EBX` (2 bytes, fall-through, `procedure=0x401fa0`). The function dossier #49 identifies `EBX` as the callback target supplied to the loop.
+- Combined with `CALL 0x401fd6` at `0x401fc3` and the thunk `JMP EAX` at `0x401fd6` (#50), this confirms that the loop passes the current record in `ECX` and dispatches through the callback address in `EAX`. After the callback returns, #58–60 confirm the stride advance, counter decrement and conditional loop-back.
+- This completes the observed machine-level control-flow shape of `FUN_00401fa0`. It is a reusable fixed-stride callback loop used by the pool path; it does **not** establish that this helper itself implements pathfinding or other gameplay behavior.
+
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
 ### Geometry findings from runs #20–23
