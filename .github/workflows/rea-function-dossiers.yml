@@ -2,6 +2,13 @@ name: Decompile all functions into individual notes
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - agent/probe-loop-401fca-20261017
+    paths:
+      - 'scripts/ghidra/DecompileFunctionDossiers.java'
+      - '.github/workflows/rea-function-dossiers.yml'
+      - 'retro/exe et dll/age3y.exe'
   schedule:
     - cron: "17 2 * * 0"
 
