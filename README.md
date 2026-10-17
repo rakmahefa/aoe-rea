@@ -6,6 +6,10 @@ The project is not intended to stop at disassembly reports or a Wine/Proton laun
 
 > **Status:** early research stage. The repository contains reference EXE/DLL files under [`retro/exe et dll/`](retro/exe%20et%20dll/). A complete native Linux port has not yet been established. Treat all future builds as experimental until their functionality is demonstrated and documented.
 
+## Progress tracking
+
+See [`docs/PROGRESS.md`](docs/PROGRESS.md) for an evidence-weighted estimate of essential-system understanding, the current uncertainty around whole-binary coverage, and separate delivery gates for the native Linux clone. This dashboard does not equate disassembly with understanding or research with a runnable port.
+
 ## Goal
 
 Work toward a distributable Linux-native game build:
@@ -433,6 +437,14 @@ Evidence: [Actions run #59, ID 39012977596](https://github.com/rakmahefa/aoe-rea
 - The complete function dossier from probe #49 shows `EDI` is the loop counter initialized from the requested count. Probe #59 directly confirms that the counter is decremented once after the record pointer advances; it does not itself establish the following branch.
 - The function-level assembly in probe #49 already reports `0x401fcd: JNZ 0x00401fbf`. That decode makes a loop-back to the record-processing block consistent with the observed count-decrement sequence; a one-address probe at `0x401fcd` is the next confirmation step.
 - Together with #50 and #52–57, the observed control-flow chain is: `CALL 0x401fd6` at `0x401fc3` → thunk `JMP EAX` → callback returns at `0x8ca93e` → caller resumes at `0x401fc8` → advances `ESI` by `EBP` → decrements `EDI`. This does not establish the original source-level signature or broader business meaning of the callback.
+
+### Loop-back branch — `0x401fcd` (probe #60)
+
+Evidence: [Actions run #60, ID 39013905352](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352); [artifact 12093873174](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352/artifacts/12093873174).
+
+- The native probe decodes bytes `75 f0` at `0x401fcd` as `JNZ 0x00401fbf`, length two bytes, a conditional jump with a direct destination, and `procedure=0x401fa0`.
+- This confirms the loop-back target already visible in the function dossier #49. Together with #58 (`ADD ESI,EBP`) and #59 (`SUB EDI,0x1`), it confirms the pointer advance, counter decrement, and conditional branch in the fixed-stride loop.
+- The next useful instruction target is the branch destination `0x401fbf`, not the byte immediately after the conditional jump.
 
 **Do not over-interpret:** `0x00c66234`, `0x00c66664`, offsets `+0x13c`, `+0x58`, `+0x5c`, and `+0x80` have not been assigned confirmed domain meanings. `FUN_0044cb21` behaves like a generic bounds-checked collection accessor based on its code, but that does not establish pathfinding semantics by itself. The callback sequence reaches `0x88281f`, where an unconditional direct call to `0x87157b` is observed. Ghidra recognizes `0x87157b` as a procedure; run #32's function dossier is documented above. Runs #33–37 (`FUN_00799898`, `FUN_00798815`, `FUN_00798492`, `FUN_004af0c9`, `FUN_004aefe9`) are documented below. Runs #38–42 (`FUN_004af120`, `FUN_004aefb7`, `FUN_004aeee8`, `FUN_0058e2c3`, `FUN_004afb4c`) are documented below; run #43 (`FUN_004ae7b1`) is documented above. Keep the tables at `DAT_00cafb9c`, `DAT_00cafba8`, and `DAT_00cafbb4` distinct unless further evidence links them. Keep `0x882824` as the sequential address after the CALL, but prioritize the callee chain while its semantics remain unresolved. Continue with one-address probes, following decoded branch/call/return targets rather than assuming the full continuation is linear. The geometry/obstruction/occupancy track from runs #20–23 remains separate.
 
