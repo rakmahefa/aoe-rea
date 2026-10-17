@@ -97,7 +97,7 @@ public class DecompileFunctionDossiers extends GhidraScript {
         chunkMonitor.doInitialize(total);
         CachingPool<DecompInterface> decompilerPool =
             new CachingPool<>(new DecompilerFactory(currentProgram));
-        FunctionDossierCallback callback = new FunctionDossierCallback(decompilerPool, chunkMonitor);
+        FunctionDossierCallback callback = new FunctionDossierCallback(decompilerPool);
         ChunkingParallelDecompiler<FunctionDossier> parallelDecompiler =
             ParallelDecompiler.createChunkingParallelDecompiler(callback, chunkMonitor);
 
@@ -214,11 +214,9 @@ public class DecompileFunctionDossiers extends GhidraScript {
 
     private class FunctionDossierCallback implements QCallback<Function, FunctionDossier> {
         private final CachingPool<DecompInterface> pool;
-        private final ChunkingTaskMonitor chunkMonitor;
 
-        FunctionDossierCallback(CachingPool<DecompInterface> pool, ChunkingTaskMonitor chunkMonitor) {
+        FunctionDossierCallback(CachingPool<DecompInterface> pool) {
             this.pool = pool;
-            this.chunkMonitor = chunkMonitor;
         }
 
         @Override
@@ -253,15 +251,6 @@ public class DecompileFunctionDossiers extends GhidraScript {
             }
         }
 
-        @Override
-        public synchronized void addCancelledListener(CancelledListener listener) {
-            chunkMonitor.addCancelledListener(listener);
-        }
-
-        @Override
-        public synchronized void removeCancelledListener(CancelledListener listener) {
-            chunkMonitor.removeCancelledListener(listener);
-        }
     }
 
     private class DecompilerFactory extends CountingBasicFactory<DecompInterface> {
