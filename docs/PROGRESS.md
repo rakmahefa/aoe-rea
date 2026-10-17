@@ -74,7 +74,7 @@ These are intentionally independent of the understanding score.
 | Gate | Status | Acceptance evidence |
 |---|---|---|
 | Exact target, version and analysis pipeline | In progress / usable | Reference executable fingerprinted; focused analysis artifacts reproducible. |
-| Whole-program and dependency inventory | Not started | Machine-readable inventory of functions, imports/DLLs, strings, segments and indirect-call gaps. |
+| Whole-program and dependency inventory | Partial | Function entries/body ranges, memory blocks and external-library names export correctly; import details, strings and call graph remain to be added. |
 | Essential behavior specifications | Early research | Major subsystems mapped, facts separated from hypotheses, behavioral contracts written. |
 | Differential/regression tests against original | Not started | Repeatable cases and expected observations for each reconstructed subsystem. |
 | Reconstructed, maintainable source modules | Not started | Original behavior implemented without copying decompiler pseudocode wholesale. |
@@ -89,13 +89,15 @@ These are intentionally independent of the understanding score.
 
 - [Probe #58 — `0x401fc8: ADD ESI,EBP`](https://github.com/rakmahefa/aoe-rea/actions/runs/38923177848) · [artifact](https://github.com/rakmahefa/aoe-rea/actions/runs/38923177848/artifacts/12055028788).
 - [Probe #59 — `0x401fca: SUB EDI,0x1`](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596) · [artifact](https://github.com/rakmahefa/aoe-rea/actions/runs/39012977596/artifacts/12094140406).
-- [Probe #60 — `0x401fcd: JNZ 0x00401fbf`](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352). Its retrievable artifact confirms the instruction bytes `75 f0`, conditional-jump flow and enclosing procedure `0x401fa0`. The next useful address follows the taken branch: `0x401fbf`.
+- [Probe #60 — `0x401fcd: JNZ 0x00401fbf`](https://github.com/rakmahefa/aoe-rea/actions/runs/39013905352) confirms the loop-back branch.
+- [Probe #61 — `0x401fbf: MOV ECX,ESI`](https://github.com/rakmahefa/aoe-rea/actions/runs/39022375509) and [probe #62 — `0x401fc1: MOV EAX,EBX`](https://github.com/rakmahefa/aoe-rea/actions/runs/39022864629) establish the register setup before the callback thunk.
+- [Inventory + metrics run #64](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900) exports the function census and computes the dossier-coverage and essential-system indicators. A follow-up inventory run is checking that every ledger address/name matches an actual inventory entry.
 
 Immediate order of work:
 
-1. Continue tracing the loop and callback at `0x401fbf`, keeping evidence attached to run/artifact IDs.
-2. Build the machine-readable whole-binary inventory so function-level progress has a real denominator.
-3. Refine weights after subsystem classification and dependency mapping, then update this dashboard only when new evidence changes a score.
+1. Finish inventory validation and preserve the generated `progress_metrics.json` as the reproducible score snapshot.
+2. Extend inventory with imports, string references and a call graph, then classify the rest of the 30,581 function entries into system areas.
+3. Continue reverse engineering the caller graph around `FUN_004adea4` / `FUN_008caa04`, and revise subsystem levels only when new evidence changes actual behavioral understanding.
 
 ## Machine-readable inputs
 
