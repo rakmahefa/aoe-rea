@@ -48,24 +48,21 @@ Do not award points merely because a function has pseudocode. Every nonzero rati
 | Save/load, networking, replay and mod interfaces | 2% | 0% | 0.00 | Not yet investigated enough to score. |
 | **Total** | **100%** |  | **12.45%** | **≈12% essential-system understanding** |
 
-## Function-level coverage: the missing denominator
+## Function-level coverage: a denominator now exists
 
-The essential-system score above is a useful planning indicator, but it does **not** answer “what percentage of the entire executable have we understood?” We need a reproducible inventory before that question can be answered.
+The essential-system score above is a useful planning indicator, but it does **not** answer “what percentage of the entire executable have we understood?” We now have a reproducible denominator for **function dossier coverage**, while semantic understanding of the whole binary remains an approximation.
 
-The initial inventory for the exact SHA-256 above is available from [workflow run #63](https://github.com/rakmahefa/aoe-rea/actions/runs/39023415279) ([artifact 12097254654](https://github.com/rakmahefa/aoe-rea/actions/runs/39023415279/artifacts/12097254654)). It was produced with Ghidra 12.1.4 from source commit `1cd64e4aae565f5a06d7ce6a96fa151bb84b7f13`. Snapshot totals: **30,581 Ghidra function entries**, **83 thunks**, **40,945 function-body ranges**, **6 memory blocks** and **22 external libraries**. This is the machine-inventory denominator for the exact PE32 SHA-256 above, not a claim that every detected boundary corresponds to a distinct original source-level function. The inventory workflow now also emits `progress_metrics.json` from the machine-readable [function ledger](FUNCTION_LEDGER.csv) and [essential-system scorecard](ESSENTIAL_SYSTEM_SCORECARD.csv); the rerun including this calculator is [workflow run #64](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900).
+The latest completed inventory run with calculated metrics is [workflow run #64](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900) ([artifact 12097019519](https://github.com/rakmahefa/aoe-rea/actions/runs/39024103900/artifacts/12097019519)). It used Ghidra 12.1.4 on the exact PE32 SHA-256 above and reports **30,581 Ghidra function entries**, **83 thunks**, **40,939 function-body ranges**, **6 memory blocks** and **22 external library names**. An earlier inventory reported 40,945 body ranges; the function count remained 30,581. We therefore use the function-entry count as the denominator and do not yet treat the range count as a stable progress metric. A Ghidra function entry is an analysis unit, not proof of a distinct original source-level routine.
 
-The inventory pipeline exports, for the exact SHA-256 above:
+The generated report separates three different indicators:
 
-1. Total functions recognized by Ghidra, with entry address, body size/ranges and whether the function boundary is trustworthy.
-2. Imports, imported DLLs, exports (where relevant), strings, executable/data segments and direct/indirect references.
-3. Call-graph coverage: discovered callers/callees, unresolved indirect calls, and library/runtime versus likely gameplay functions.
-4. A reviewed classification of functions into the essential subsystems above, plus “unknown/unclassified”.
+- **Function dossier coverage:** 25 / 30,581 = **0.08175%**. The numerator is the number of unique entries in `docs/FUNCTION_LEDGER.csv`; these dossiers can be partial.
+- **Behavior validated against the original or a trusted oracle:** 0 / 30,581 = **0%**. No repeatable differential tests are recorded yet. This is deliberately stricter than static evidence collection.
+- **Essential-system understanding:** **12.45 / 100**, computed from the weighted scorecard below. This tracks breadth across critical systems and must not be conflated with the function count.
 
-Then report two different function percentages:
-- **Function triage coverage** = functions with at least a recorded classification / total inventoried functions.
-- **Function behavior understanding** = functions with evidence-backed behavioral summaries / total inventoried functions.
+The current inventory workflow exports **function entries and names, body ranges, memory blocks and external-library names**. It does not yet export a complete import/API map, string inventory or call graph. Those are explicit follow-on inventory tasks. We also do not yet have a reviewed classification for all 30,581 entries, so **whole-program triage coverage remains unmeasured**.
 
-Both must include a denominator, inventory timestamp, target SHA-256, and rules for excluding thunks, duplicated code ranges, or malformed function boundaries. The current 25 dossier entries are recorded in `docs/FUNCTION_LEDGER.csv`; their coverage is 25/30,581 = 0.08175%. The ledger explicitly marks all 25 as **not behavior-validated** against the original yet. This does not mean the static observations are worthless; it means no differential/oracle tests have validated end-to-end behavior. Also report a confidence distribution; a function with a guessed name must not count as understood.
+Future function percentages must include inventory timestamp, target SHA-256 and rules for excluding thunks, duplicated code ranges or malformed boundaries. Do not silently count a guessed name or partial pseudocode as a fully understood function.
 
 ## Native Linux clone delivery gates
 
