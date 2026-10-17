@@ -41,12 +41,25 @@ def load_csv(path: Path, required_columns: set[str]) -> list[dict[str, str]]:
 
 
 def calculate(inventory: dict[str, Any], ledger_rows: list[dict[str, str]],
-              scorecard_rows: list[dict[str, str]]) -> dict[str, Any]:
+              scorecard_rows: list[dict[str, str]],
+              function_rows: list[dict[str, str]]) -> dict[str, Any]:
     target = inventory.get("target") or {}
     functions = inventory.get("functions") or {}
     total_functions = functions.get("total")
     if not isinstance(total_functions, int) or total_functions <= 0:
         raise ValueError("inventory.functions.total must be a positive integer")
+
+    inventory_functions: dict[str, dict[str, str]] = {}
+    for function_row in function_rows:
+        address_key = function_row["entry_address"].strip().lower()
+        if address_key in inventory_functions:
+            raise ValueError(f"Inventory has duplicate function entry {address_key}")
+        inventory_functions[address_key] = function_row
+    if len(inventory_functions) != total_functions:
+        raise ValueError(
+            f"functions.csv has {len(inventory_functions)} records but summary.json reports "
+            f"{total_functions} functions"
+        )
 
     addresses: set[str] = set()
     validated_count = 0
@@ -57,6 +70,14 @@ def calculate(inventory: dict[str, Any], ledger_rows: list[dict[str, str]],
         if address in addresses:
             raise ValueError(f"FUNCTION_LEDGER contains duplicate address {address}")
         addresses.add(address)
+        inventory_function = inventory_functions.get(address)
+        if inventory_function is None:
+            raise ValueError(f"FUNCTION_LEDGER row {row_number}: {address} is absent from functions.csv")
+        if inventory_function["name"] != row["ghidra_name"].strip():
+            raise ValueError(
+                f"FUNCTION_LEDGER row {row_number}: Ghidra name mismatch for {address}: "
+                f"{row['ghidra_name']!r} vs {inventory_function['name']!r}"
+            )
         evidence_url = row["evidence_url"].strip()
         if not evidence_url.startswith("https://github.com/"):
             raise ValueError(f"FUNCTION_LEDGER row {row_number}: expected a GitHub evidence URL")
@@ -144,6 +165,8 @@ def main() -> int:
     parser.add_argument("--inventory", type=Path, required=True, help="Ghidra inventory summary.json")
     parser.add_argument("--ledger", type=Path, default=Path("docs/FUNCTION_LEDGER.csv"))
     parser.add_argument("--scorecard", type=Path, default=Path("docs/ESSENTIAL_SYSTEM_SCORECARD.csv"))
+    parser.add_argument("--functions-csv", type=Path, default=None,
+                        help="Optional functions.csv path; defaults to the inventory summary's sibling file")
     parser.add_argument("--output", type=Path, required=True, help="Output progress_metrics.json path")
     args = parser.parse_args()
 
@@ -156,7 +179,14 @@ def main() -> int:
         scorecard = load_csv(args.scorecard, {
             "subsystem", "weight", "current_level", "evidence_reason",
         })
-        metrics = calculate(inventory, ledger, scorecard)
+        files = inventory.get("files") or {}
+        function_csv_path = args.functions_csv or (
+            args.inventory.parent / files.get("functions", "functions.csv")
+        )
+        function_rows = load_csv(function_csv_path, {
+            "entry_address", "name", "is_external", "is_thunk", "body_bytes", "body_range_count",
+        })
+        metrics = calculate(inventory, ledger, scorecard, function_rows)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with args.output.open("w", encoding="utf-8") as stream:
             json.dump(metrics, stream, indent=2, ensure_ascii=False)
@@ -173,6 +203,7 @@ def main() -> int:
     print()
     print(f"- **Target SHA-256:** `{metrics['target']['sha256']}`")
     print(f"- **Ghidra functions inventoried:** {inventory_metrics['total_functions']:,}")
+    print(f"- **Function ledger validation:** {len(ledger):,} addresses match inventory entries and names.")
     print(f"- **Function dossier coverage:** {dossier['count']:,}/{dossier['denominator']:,} "
           f"({dossier['percent']:.4f}%) — partial dossiers are not full understanding.")
     print(f"- **Functions validated against an oracle:** {validated['count']:,}/{validated['denominator']:,} "
