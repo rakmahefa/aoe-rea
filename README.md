@@ -498,3 +498,14 @@ Use game files only when obtained lawfully. Do not publish proprietary executabl
 ## Definition of success
 
 The project succeeds when a GitHub Release provides a **genuine Linux-native executable**, reproducible build/release steps, documented dependencies, and an honest account of its tested functionality and limitations.
+
+
+## Automatic function-by-function analysis
+
+The workflow [`rea-function-dossiers.yml`](.github/workflows/rea-function-dossiers.yml) runs on demand and weekly. It imports the exact reference executable into Ghidra, iterates over every discovered function, and produces:
+
+- `function-dossiers/index.csv`: index of every function and decompilation status.
+- `function-dossiers/functions/<prefix>/<address>_<name>.md`: one Markdown note per function, including address, Ghidra name, target SHA-256, tool version, and decompiler output.
+- `function-dossiers/README.md`: summary counts for successful and failed decompilations.
+
+The complete folder is published as the GitHub Actions artifact **`aoe-rea-function-dossiers`** (30-day retention), rather than committing tens of thousands of generated files to Git. The workflow validates that every indexed function has a note file. These are machine-generated static-analysis dossiers, **not** verified behavioral explanations; successful decompilation does not mean a function is understood. The whole-program pass may take hours and is capped at six hours per run.
