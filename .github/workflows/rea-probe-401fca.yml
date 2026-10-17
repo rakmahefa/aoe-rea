@@ -3,7 +3,7 @@ name: REA one-shot loop branch probe
 on:
   push:
     branches:
-      - agent/probe-loop-401fcd-20261017
+      - agent/probe-loop-401fca-20261017
 
 permissions:
   contents: read
