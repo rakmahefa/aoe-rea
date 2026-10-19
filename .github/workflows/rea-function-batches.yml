@@ -1,0 +1,72 @@
+name: Prepare 100-function semantic review batches
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful dossier workflow run ID"
+        required: true
+        default: "39106827655"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: aoe-rea-function-batches-${{ inputs.source_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Build worklists and heuristic priority queue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download dossier artifact from selected run
+        uses: actions/download-artifact@v6
+        with:
+          name: aoe-rea-function-dossiers
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          path: function-dossiers
+
+      - name: Generate 100-entry batches
+        run: >-
+          python3 scripts/prepare_function_batches.py
+          --input function-dossiers
+          --output function-batches
+          --batch-size 100
+
+      - name: Verify completeness and pending semantic status
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+          root = Path("function-batches")
+          manifest = json.loads((root / "manifest.json").read_text())
+          with (root / "function-batch-index.csv").open(newline="", encoding="utf-8") as f:
+              rows = list(csv.DictReader(f))
+          batches = list((root / "batches").glob("BATCH_*.md"))
+          if len(rows) != manifest["total_entries"] or len(batches) != manifest["batch_count"]:
+              raise SystemExit("Index/batch coverage mismatch")
+          if any(r["behavior_validated"] != "false" for r in rows):
+              raise SystemExit("Static triage cannot set behavior_validated=true")
+          print(f"Verified {len(rows)} entries across {len(batches)} batches. Semantic validation remains pending.")
+          PY
+
+      - name: Publish worklists
+        uses: actions/upload-artifact@v7
+        with:
+          name: aoe-rea-semantic-batches
+          path: function-batches/
+          if-no-files-found: error
+          retention-days: 30
